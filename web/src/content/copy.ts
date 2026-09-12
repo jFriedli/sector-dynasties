@@ -44,4 +44,12 @@ export const copy = {
   saveStatusSaved: (savedAt: string) => `Saved at ${savedAt}.`,
   saveStatusLoaded: (savedAt: string) => `Loaded save from ${savedAt}.`,
   saveStatusError: (message: string) => `Save failed. ${message}`,
+  globalSearchLabel: "Search",
+  globalSearchPlaceholder: "Search characters and cities",
+  globalSearchResultsLabel: "Search results",
+  globalSearchCharacterKindLabel: "Character",
+  globalSearchCityKindLabel: "City",
+  globalSearchCityLocation: (planetName: string, countryName: string) =>
+    `${countryName}, ${planetName}`,
+  globalSearchNoResults: (query: string) => `No characters or cities match "${query}".`,
 };
