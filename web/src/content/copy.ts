@@ -36,4 +36,12 @@ export const copy = {
   dynastyStatusAlive: "Living",
   dynastyStatusDeceased: "Deceased",
   dynastyAge: (years: number) => `${years} ${years === 1 ? "year" : "years"} old`,
+  saveControlsLabel: "Save and load",
+  saveButton: "Save",
+  loadButton: "Load",
+  defaultSaveSlotName: "Quick save",
+  saveStatusIdle: "No save yet.",
+  saveStatusSaved: (savedAt: string) => `Saved at ${savedAt}.`,
+  saveStatusLoaded: (savedAt: string) => `Loaded save from ${savedAt}.`,
+  saveStatusError: (message: string) => `Save failed. ${message}`,
 };
