@@ -27,6 +27,17 @@ const OUTPUT_INDEX_SMOOTHING: f64 = 0.12;
 /// ordinary noise-driven drift.
 const UNEMPLOYMENT_OUTPUT_SENSITIVITY: f64 = 0.05;
 
+/// Wage share of weekly output at `Country::social_mobility == 0.0`: a
+/// rigid society where gains mostly stay concentrated rather than reaching
+/// the broad population's wages.
+const WAGE_SHARE_BASE: f64 = 0.3;
+
+/// How much additional wage share `Country::social_mobility == 1.0` adds on
+/// top of `WAGE_SHARE_BASE`, so a fully fluid society converts output into
+/// wages (and therefore `PopulationGroup::average_wealth` growth) at up to
+/// `WAGE_SHARE_BASE + WAGE_SHARE_MOBILITY_BONUS`.
+const WAGE_SHARE_MOBILITY_BONUS: f64 = 0.2;
+
 fn specialization_multiplier(spec: CitySpecialization) -> f64 {
     match spec {
         CitySpecialization::Finance => 1.4,
@@ -54,6 +65,19 @@ fn unemployment_drift(recent_output_index: f64, noise: f64) -> f64 {
     output_driven + noise
 }
 
+/// Fraction of weekly output that flows into wages (and so into
+/// `PopulationGroup::average_wealth`) rather than staying concentrated
+/// elsewhere, as a function of `Country::social_mobility`. A rigid country
+/// (`0.0`) converts less of its output into broad wage growth than a fluid
+/// one (`1.0`); this is the hook proving `social_mobility` actually affects
+/// a calculation rather than sitting decorative. `social_mobility` is
+/// expected to already be within `0.0..=1.0` (see `invariants.rs`), but the
+/// result is clamped defensively so a corrupt value can't push the wage
+/// share outside a sane range.
+fn wage_share_fraction(social_mobility: f64) -> f64 {
+    (WAGE_SHARE_BASE + social_mobility * WAGE_SHARE_MOBILITY_BONUS).clamp(0.0, 1.0)
+}
+
 /// Run one weekly settlement over every city in the sector, using an
 /// economy-domain RNG stream so this never perturbs worldgen, character, or
 /// any other stream's sequence.
@@ -61,6 +85,7 @@ pub fn settle_week(sector: &mut Sector, rng: &mut SimRng) {
     for system in &mut sector.systems {
         for planet in &mut system.planets {
             for country in &mut planet.countries {
+                let wage_share_fraction = wage_share_fraction(country.social_mobility);
                 for city in &mut country.cities {
                     let multiplier = specialization_multiplier(city.specialization);
                     let baseline_output =
@@ -71,8 +96,8 @@ pub fn settle_week(sector: &mut Sector, rng: &mut SimRng) {
                     city.treasury += output;
 
                     let employment_rate = 1.0 - city.population.unemployment_rate;
-                    let wage_share =
-                        output * 0.4 * employment_rate / city.population.size.max(1) as f64;
+                    let wage_share = output * wage_share_fraction * employment_rate
+                        / city.population.size.max(1) as f64;
                     city.population.average_wealth =
                         (city.population.average_wealth + wage_share).max(0.0);
 
@@ -197,6 +222,75 @@ mod tests {
             "a sustained shortfall ({depressed_rate}) should measurably exceed baseline \
              drift ({baseline_rate})"
         );
+    }
+
+    #[test]
+    fn wage_share_fraction_grows_with_social_mobility() {
+        let rigid = wage_share_fraction(0.0);
+        let fluid = wage_share_fraction(1.0);
+        assert_eq!(rigid, WAGE_SHARE_BASE);
+        assert_eq!(fluid, WAGE_SHARE_BASE + WAGE_SHARE_MOBILITY_BONUS);
+        assert!(fluid > rigid);
+    }
+
+    #[test]
+    fn wage_share_fraction_clamps_a_corrupt_mobility_value() {
+        assert_eq!(wage_share_fraction(-5.0), 0.0);
+        assert!(wage_share_fraction(5.0) <= 1.0);
+    }
+
+    #[test]
+    fn higher_social_mobility_grows_average_wealth_faster_holding_everything_else_constant() {
+        // Two sectors from the same seed (so population, specialization,
+        // and every RNG draw line up exactly), differing only in
+        // `Country::social_mobility`, prove the wage-share hook actually
+        // changes `average_wealth` growth rather than sitting decorative.
+        let mut rigid_sector = generate_sector(4040, 2);
+        let mut fluid_sector = generate_sector(4040, 2);
+        for planet in fluid_sector.systems.iter_mut().flat_map(|s| &mut s.planets) {
+            for country in &mut planet.countries {
+                country.social_mobility = 1.0;
+            }
+        }
+        for planet in rigid_sector.systems.iter_mut().flat_map(|s| &mut s.planets) {
+            for country in &mut planet.countries {
+                country.social_mobility = 0.0;
+            }
+        }
+
+        let mut rigid_rng = SimRng::from_seed(4040, "economy");
+        let mut fluid_rng = SimRng::from_seed(4040, "economy");
+        for _ in 0..8 {
+            settle_week(&mut rigid_sector, &mut rigid_rng);
+            settle_week(&mut fluid_sector, &mut fluid_rng);
+        }
+
+        let rigid_wealth: Vec<f64> = rigid_sector
+            .systems
+            .iter()
+            .flat_map(|s| &s.planets)
+            .flat_map(|p| &p.countries)
+            .flat_map(|c| &c.cities)
+            .map(|city| city.population.average_wealth)
+            .collect();
+        let fluid_wealth: Vec<f64> = fluid_sector
+            .systems
+            .iter()
+            .flat_map(|s| &s.planets)
+            .flat_map(|p| &p.countries)
+            .flat_map(|c| &c.cities)
+            .map(|city| city.population.average_wealth)
+            .collect();
+
+        assert_eq!(rigid_wealth.len(), fluid_wealth.len());
+        assert!(!rigid_wealth.is_empty());
+        for (rigid, fluid) in rigid_wealth.iter().zip(fluid_wealth.iter()) {
+            assert!(
+                fluid > rigid,
+                "fully mobile society ({fluid}) should out-earn a fully \
+                 rigid one ({rigid}) holding population and RNG draws constant"
+            );
+        }
     }
 
     #[test]
