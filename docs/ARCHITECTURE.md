@@ -43,6 +43,15 @@ If you find yourself writing a game rule (a formula, a threshold, a decision) in
   field: a renderer decides how to draw a descriptor, `sim-core` never knows
   or depends on which approach is in use. See docs/ASSETS.md's "Character
   portraits" section.
+- `traits.rs` — `Trait`, a small fixed set of personality tags (ambitious,
+  frugal, sickly, ...) attached to `Character`, generated deterministically
+  per character. Growing the list is ongoing content work, not an
+  architectural change.
+- `career.rs` — `promotion_chance`, the minimal consumer proving `Trait`
+  actually affects a system rather than sitting decorative. Not a real
+  career/job system: that is issue #26's larger, separate scope (job
+  ladder, salary, promotion timing), which should absorb or replace this
+  once it lands (tracked in #125).
 - `economy.rs` — weekly settlement over cities. Intentionally minimal (no goods,
   production chains, or trade routes yet); it exists to prove the tick/frequency
   architecture. Real production chains are `economy`/`trade` backlog work.
