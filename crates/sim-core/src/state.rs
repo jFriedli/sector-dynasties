@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::dynasty::{Character, Dynasty, DynastyMemberSummary};
 use crate::economy;
+use crate::mortality;
 use crate::portrait::PortraitDescriptor;
 use crate::rng::{RngDomainSummary, SimRng};
 use crate::save::{load_and_migrate, SaveError};
@@ -28,6 +29,7 @@ pub struct SimState {
     pub sector: Sector,
     pub dynasty: Dynasty,
     economy_rng: SimRng,
+    mortality_rng: SimRng,
 }
 
 impl SimState {
@@ -80,6 +82,7 @@ impl SimState {
             sector,
             dynasty,
             economy_rng: SimRng::from_seed(seed, "economy"),
+            mortality_rng: SimRng::from_seed(seed, "dynasty:mortality"),
         }
     }
 
@@ -91,9 +94,11 @@ impl SimState {
         if self.clock.is_week_boundary() {
             economy::settle_week(&mut self.sector, &mut self.economy_rng);
         }
-        // Monthly population updates and yearly demographic change hook in
-        // here as their own systems; see docs/ROADMAP.md milestone
-        // "Population and culture".
+        if self.clock.is_year_boundary() {
+            mortality::age_and_roll_mortality(&mut self.dynasty, &mut self.mortality_rng);
+        }
+        // Monthly population updates hook in here as their own system; see
+        // docs/ROADMAP.md milestone "Population and culture".
     }
 
     pub fn step_days(&mut self, days: u32) {
@@ -142,7 +147,10 @@ impl SimState {
     /// since the set of streams changes rarely and explicitness keeps this
     /// list trustworthy.
     fn rng_domain_summaries(&self) -> Vec<RngDomainSummary> {
-        vec![RngDomainSummary::new("economy", &self.economy_rng)]
+        vec![
+            RngDomainSummary::new("economy", &self.economy_rng),
+            RngDomainSummary::new("dynasty:mortality", &self.mortality_rng),
+        ]
     }
 
     pub fn to_json(&self) -> String {
@@ -260,12 +268,13 @@ mod tests {
     }
 
     #[test]
-    fn summary_reports_the_seed_and_the_economy_rng_domain() {
+    fn summary_reports_the_seed_and_the_rng_domains() {
         let state = SimState::new(2026);
         let summary = state.summary();
         assert_eq!(summary.seed, 2026);
-        assert_eq!(summary.rng_domains.len(), 1);
+        assert_eq!(summary.rng_domains.len(), 2);
         assert_eq!(summary.rng_domains[0].domain, "economy");
+        assert_eq!(summary.rng_domains[1].domain, "dynasty:mortality");
     }
 
     #[test]
@@ -299,6 +308,31 @@ mod tests {
         let after = state.summary().rng_domains[0].fingerprint.clone();
 
         assert_ne!(before, after);
+    }
+
+    #[test]
+    fn the_mortality_rng_fingerprint_advances_after_a_year_passes() {
+        let state = SimState::new(2026);
+        let before = state.summary().rng_domains[1].fingerprint.clone();
+
+        let mut state = state;
+        state.step_days(crate::time::DAYS_PER_YEAR as u32);
+        let after = state.summary().rng_domains[1].fingerprint.clone();
+
+        assert_ne!(before, after);
+    }
+
+    #[test]
+    fn the_founders_age_increases_by_one_after_a_year_passes() {
+        // Aging happens before that year's mortality roll (see
+        // `mortality::age_and_roll_mortality`), so the age increment holds
+        // regardless of whether the founder survives the roll.
+        let mut state = SimState::new(2026);
+        let starting_age = state.dynasty.head().unwrap().age_years;
+
+        state.step_days(crate::time::DAYS_PER_YEAR as u32);
+
+        assert_eq!(state.dynasty.head().unwrap().age_years, starting_age + 1);
     }
 
     #[test]
