@@ -9,6 +9,8 @@ export const copy = {
   title: "Sector Dynasties",
   subtitle: "A dynasty grows one generation at a time.",
   advanceOneYear: "Advance one year",
+  advanceYearsLabel: "Years to advance",
+  advanceYearsButton: "Advance",
   yearLabel: "Year",
   populationLabel: "Population under your influence",
   wealthLabel: "Dynasty wealth",
