@@ -62,6 +62,11 @@ If you find yourself writing a game rule (a formula, a threshold, a decision) in
 - `economy.rs` — weekly settlement over cities. Intentionally minimal (no goods,
   production chains, or trade routes yet); it exists to prove the tick/frequency
   architecture. Real production chains are `economy`/`trade` backlog work.
+- `business.rs` — `labor_cost_fraction`/`net_income`, the minimal consumer proving
+  `Country::union_power` actually affects a business's labor costs rather than
+  sitting decorative. Not a real business system: no persisted, owned `Business`
+  type exists yet, that is issue #27's larger scope (the first settled business
+  archetype) under epic #6, which should read these functions once it lands.
 - `invariants.rs` — `check_invariants(&SimState)`, cheap enough to run every tick in
   debug/test builds. A violation is always a bug, never a game event. Extend this
   whenever you add state that has a validity rule (a range, a non-NaN requirement, a

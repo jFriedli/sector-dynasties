@@ -21,6 +21,7 @@ const sector: Sector = {
               backstory:
                 "North Compact was founded by colonists seeking independence from the old planetary charters.",
               social_mobility: 0.5,
+              union_power: 0.5,
               cities: [
                 {
                   id: 4,
@@ -55,6 +56,7 @@ const sector: Sector = {
               backstory:
                 "Dock League was formed when several rival settlements agreed to a single unified charter.",
               social_mobility: 0.6,
+              union_power: 0.3,
               cities: [
                 {
                   id: 8,

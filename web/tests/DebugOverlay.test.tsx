@@ -43,6 +43,7 @@ const SNAPSHOT: SimStateSnapshot = {
                 name: "North Compact",
                 backstory: "North Compact grew around orbital freight contracts.",
                 social_mobility: 0.45,
+                union_power: 0.4,
                 cities: [
                   {
                     id: 4,

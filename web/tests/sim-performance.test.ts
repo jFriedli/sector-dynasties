@@ -38,6 +38,7 @@ const snapshot: SimStateSnapshot = {
                 name: "Compact",
                 backstory: "Compact grew around an early shipyard.",
                 social_mobility: 0.5,
+                union_power: 0.5,
                 cities: [
                   {
                     id: 4,
@@ -75,6 +76,7 @@ const snapshot: SimStateSnapshot = {
                 name: "League",
                 backstory: "League grew around a transit compact.",
                 social_mobility: 0.7,
+                union_power: 0.3,
                 cities: [
                   {
                     id: 9,
