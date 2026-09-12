@@ -13,12 +13,14 @@ const sector: Sector = {
         {
           id: 2,
           name: "Aster Prime",
+          resource_tags: ["MetalRich"],
           countries: [
             {
               id: 3,
               name: "North Compact",
               backstory:
                 "North Compact was founded by colonists seeking independence from the old planetary charters.",
+              social_mobility: 0.5,
               cities: [
                 {
                   id: 4,
@@ -30,6 +32,7 @@ const sector: Sector = {
                     unemployment_rate: 0.04,
                   },
                   treasury: 850.25,
+                  recent_output_index: 1,
                 },
               ],
             },
@@ -44,12 +47,14 @@ const sector: Sector = {
         {
           id: 6,
           name: "Boreal Station",
+          resource_tags: ["Arid"],
           countries: [
             {
               id: 7,
               name: "Dock League",
               backstory:
                 "Dock League was formed when several rival settlements agreed to a single unified charter.",
+              social_mobility: 0.6,
               cities: [
                 {
                   id: 8,
@@ -61,6 +66,7 @@ const sector: Sector = {
                     unemployment_rate: 0.08,
                   },
                   treasury: 420.5,
+                  recent_output_index: 1,
                 },
               ],
             },

@@ -7,6 +7,7 @@ import { DynastyPanel } from "./DynastyPanel";
 import { SectorBrowser } from "./SectorBrowser";
 import { TimeControls } from "./TimeControls";
 import { cityDetailById } from "./sectorBrowser";
+import type { LastStepPerformance } from "./simPerformance";
 import type { SimStateSnapshot, StateSummary } from "./simTypes";
 
 const DAYS_PER_YEAR = 360;
@@ -17,6 +18,7 @@ export function App() {
   const [summary, setSummary] = useState<StateSummary | null>(null);
   const [snapshot, setSnapshot] = useState<SimStateSnapshot | null>(null);
   const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
+  const [lastStep, setLastStep] = useState<LastStepPerformance | null>(null);
   const [yearsToAdvance, setYearsToAdvance] = useState<number>(5);
   const debugOverlayVisible = useDebugOverlayVisible();
 
@@ -40,7 +42,9 @@ export function App() {
 
   const advanceOneYear = useCallback(() => {
     if (!handle) return;
+    const startedAt = performance.now();
     handle.step_days(DAYS_PER_YEAR);
+    setLastStep({ days: DAYS_PER_YEAR, durationMs: performance.now() - startedAt });
     setSummary(JSON.parse(handle.summary_json()) as StateSummary);
     setSnapshot(JSON.parse(handle.to_json()) as SimStateSnapshot);
   }, [handle]);
@@ -51,7 +55,10 @@ export function App() {
   // chunked stepping if `SimState` grows large enough to change that.
   const advanceYears = useCallback(() => {
     if (!handle) return;
-    handle.step_days(DAYS_PER_YEAR * yearsToAdvance);
+    const days = DAYS_PER_YEAR * yearsToAdvance;
+    const startedAt = performance.now();
+    handle.step_days(days);
+    setLastStep({ days, durationMs: performance.now() - startedAt });
     setSummary(JSON.parse(handle.summary_json()) as StateSummary);
     setSnapshot(JSON.parse(handle.to_json()) as SimStateSnapshot);
   }, [handle, yearsToAdvance]);
@@ -97,7 +104,9 @@ export function App() {
         onAdvanceOneYear={advanceOneYear}
         onAdvanceYears={advanceYears}
       />
-      {debugOverlayVisible && <DebugOverlay summary={summary} />}
+      {debugOverlayVisible && (
+        <DebugOverlay summary={summary} snapshot={snapshot} lastStep={lastStep} />
+      )}
       <DynastyPanel members={summary.dynasty_members} />
       <div className="world-panel">
         <SectorBrowser

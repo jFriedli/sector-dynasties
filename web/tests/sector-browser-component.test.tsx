@@ -14,11 +14,13 @@ const sector: Sector = {
         {
           id: 2,
           name: "Aster Prime",
+          resource_tags: ["MetalRich"],
           countries: [
             {
               id: 3,
               name: "North Compact",
               backstory: "Built around orbital freight contracts.",
+              social_mobility: 0.5,
               cities: [
                 {
                   id: 4,
@@ -30,6 +32,7 @@ const sector: Sector = {
                     unemployment_rate: 0.04,
                   },
                   treasury: 850.25,
+                  recent_output_index: 1,
                 },
               ],
             },
