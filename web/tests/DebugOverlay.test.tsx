@@ -2,7 +2,7 @@ import { act } from "react-dom/test-utils";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
 import { DebugOverlay, useDebugOverlayVisible } from "../src/DebugOverlay";
-import type { StateSummary } from "../src/simTypes";
+import type { SimStateSnapshot, StateSummary } from "../src/simTypes";
 
 // No React Testing Library dependency in this project yet (see
 // docs/TESTING.md); react-dom/client and react-dom/test-utils are already
@@ -23,9 +23,58 @@ const SUMMARY: StateSummary = {
   rng_domains: [{ domain: "economy", fingerprint: "deadbeefcafef00d" }],
 };
 
+const SNAPSHOT: SimStateSnapshot = {
+  seed: 2026,
+  sector: {
+    seed: 2026,
+    name: "Test Sector",
+    systems: [
+      {
+        id: 1,
+        name: "Aster",
+        planets: [
+          {
+            id: 2,
+            name: "Aster Prime",
+            resource_tags: ["MetalRich"],
+            countries: [
+              {
+                id: 3,
+                name: "North Compact",
+                backstory: "North Compact grew around orbital freight contracts.",
+                social_mobility: 0.45,
+                cities: [
+                  {
+                    id: 4,
+                    name: "Meridian",
+                    specialization: "Finance",
+                    population: {
+                      size: 1000,
+                      average_wealth: 12.5,
+                      unemployment_rate: 0.04,
+                    },
+                    treasury: 850.25,
+                    recent_output_index: 1,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+};
+
 function Harness({ summary }: { summary: StateSummary }) {
   const visible = useDebugOverlayVisible();
-  return visible ? <DebugOverlay summary={summary} /> : null;
+  return visible ? (
+    <DebugOverlay
+      summary={summary}
+      snapshot={SNAPSHOT}
+      lastStep={{ days: 360, durationMs: 2.34 }}
+    />
+  ) : null;
 }
 
 function pressBacktick() {
@@ -62,6 +111,8 @@ describe("debug overlay toggle", () => {
     expect(overlay).not.toBeNull();
     expect(overlay!.textContent).toContain("tick: 42");
     expect(overlay!.textContent).toContain("seed: 2026");
+    expect(overlay!.textContent).toContain("last step_days: 360 days in 2.34 ms");
+    expect(overlay!.textContent).toContain("total entities: 5");
     expect(overlay!.textContent).toContain("economy: deadbeefcafef00d");
 
     act(() => {
