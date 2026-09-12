@@ -139,6 +139,7 @@ fn generate_country(rng: &mut SimRng, next_id: &mut u32, planet_tags: &[Resource
         economic_liberalism: rng.next_f64(),
         press_freedom: rng.next_f64(),
     };
+    let social_mobility = rng.next_f64();
     let city_count = 1 + rng.next_below(3);
 
     let cities = (0..city_count)
@@ -150,6 +151,7 @@ fn generate_country(rng: &mut SimRng, next_id: &mut u32, planet_tags: &[Resource
         name,
         government,
         backstory,
+        social_mobility,
         cities,
     }
 }
@@ -231,6 +233,23 @@ mod tests {
                             city.name
                         );
                     }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn generated_social_mobility_is_in_range() {
+        let sector = generate_sector(55, 3);
+        for system in &sector.systems {
+            for planet in &system.planets {
+                for country in &planet.countries {
+                    assert!(
+                        (0.0..=1.0).contains(&country.social_mobility),
+                        "country {} has out-of-range social_mobility {}",
+                        country.name,
+                        country.social_mobility
+                    );
                 }
             }
         }

@@ -12,6 +12,7 @@ pub mod dynasty;
 pub mod economy;
 pub mod history;
 pub mod invariants;
+pub mod mortality;
 pub mod portrait;
 pub mod presets;
 pub mod rng;

@@ -24,4 +24,10 @@ export const copy = {
   cityPopulationLabel: "Population",
   cityTreasuryLabel: "Treasury",
   planetsCount: (count: number) => `${count} ${count === 1 ? "planet" : "planets"}`,
+  dynastyPanelTitle: "Dynasty",
+  dynastyRoleHead: "Head of the dynasty",
+  dynastyRoleMember: "Family member",
+  dynastyStatusAlive: "Living",
+  dynastyStatusDeceased: "Deceased",
+  dynastyAge: (years: number) => `${years} ${years === 1 ? "year" : "years"} old`,
 };
