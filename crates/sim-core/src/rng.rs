@@ -86,6 +86,37 @@ impl SimRng {
     pub fn pick_index(&mut self, len: usize) -> usize {
         self.next_below(len as u32) as usize
     }
+
+    /// Pick an index with probability proportional to `weights`. Weights
+    /// need not sum to 1; they're normalized internally. Panics if
+    /// `weights` is empty, any weight is negative or non-finite, or the
+    /// total is not positive.
+    pub fn weighted_index(&mut self, weights: &[f64]) -> usize {
+        assert!(
+            !weights.is_empty(),
+            "SimRng::weighted_index requires a non-empty weight list"
+        );
+        let total: f64 = weights.iter().sum();
+        assert!(
+            total.is_finite() && total > 0.0,
+            "SimRng::weighted_index requires a positive, finite total weight"
+        );
+
+        let mut x = self.next_f64() * total;
+        for (i, &w) in weights.iter().enumerate() {
+            assert!(
+                w.is_finite() && w >= 0.0,
+                "SimRng::weighted_index requires non-negative, finite weights"
+            );
+            if x < w {
+                return i;
+            }
+            x -= w;
+        }
+        // Floating-point rounding can leave a tiny remainder; fall back to
+        // the last index rather than panicking.
+        weights.len() - 1
+    }
 }
 
 fn fnv1a64(bytes: &[u8]) -> u64 {
@@ -188,6 +219,49 @@ mod tests {
             "next_f64 output is not reasonably uniform across buckets \
              (chi-square statistic {chi_square:.2}, bucket counts {counts:?})"
         );
+    }
+
+    #[test]
+    fn weighted_index_stays_in_bounds_and_never_picks_a_zero_weight_option() {
+        let mut rng = SimRng::from_seed(321, "property:weighted_index");
+        let weights = [3.0, 0.0, 1.0];
+        for _ in 0..5_000 {
+            let idx = rng.weighted_index(&weights);
+            assert!(
+                idx < weights.len(),
+                "weighted_index returned out-of-bounds {idx}"
+            );
+            assert_ne!(idx, 1, "weighted_index picked a zero-weight option");
+        }
+    }
+
+    #[test]
+    fn weighted_index_is_biased_toward_heavier_weights() {
+        let mut rng = SimRng::from_seed(654, "property:weighted_index_bias");
+        let weights = [8.0, 1.0, 1.0];
+        const SAMPLES: usize = 20_000;
+
+        let mut counts = [0u32; 3];
+        for _ in 0..SAMPLES {
+            counts[rng.weighted_index(&weights)] += 1;
+        }
+
+        let heavy_share = counts[0] as f64 / SAMPLES as f64;
+        assert!(
+            heavy_share > 0.6,
+            "expected the 8x-weighted option to dominate, got share {heavy_share:.3} \
+             (counts {counts:?})"
+        );
+    }
+
+    #[test]
+    fn same_seed_and_domain_reproduce_the_same_weighted_index_sequence() {
+        let weights = [2.0, 5.0, 1.0, 3.0];
+        let mut a = SimRng::from_seed(42, "weighted-determinism");
+        let mut b = SimRng::from_seed(42, "weighted-determinism");
+        let seq_a: Vec<usize> = (0..200).map(|_| a.weighted_index(&weights)).collect();
+        let seq_b: Vec<usize> = (0..200).map(|_| b.weighted_index(&weights)).collect();
+        assert_eq!(seq_a, seq_b);
     }
 
     #[test]

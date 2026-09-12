@@ -27,7 +27,21 @@ pub struct StarSystem {
 pub struct Planet {
     pub id: EntityId,
     pub name: String,
+    /// Small set of resource tags biasing which `CitySpecialization`
+    /// worldgen picks for this planet's cities. Intentionally a short,
+    /// fixed list rather than a full resource system; see epic #4.
+    pub resource_tags: Vec<ResourceTag>,
     pub countries: Vec<Country>,
+}
+
+/// A small fixed set of planet-level resource characteristics. Kept
+/// deliberately short: this proves the worldgen hook (tags bias city
+/// specialization odds) rather than modeling a full resource economy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ResourceTag {
+    MetalRich,
+    Agricultural,
+    Arid,
 }
 
 /// A country's government is described by its components rather than a
