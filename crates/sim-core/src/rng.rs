@@ -138,4 +138,81 @@ mod tests {
             assert!(rng.next_below(6) < 6);
         }
     }
+
+    // --- Property-style sanity checks -------------------------------------
+    //
+    // These use hand-rolled large-sample checks rather than a
+    // proptest/quickcheck-style crate. Deterministic simulation RNGs like
+    // this one have a fixed, well-understood output space (a bounded f64,
+    // an integer below a bound), so generating and checking a large batch of
+    // samples from a few fixed seeds is simpler and just as effective at
+    // catching a broken shift/mask as shrink-based property testing, without
+    // adding a new workspace dependency for one test module.
+
+    #[test]
+    fn next_f64_stays_in_unit_interval_and_is_reasonably_uniform() {
+        let mut rng = SimRng::from_seed(99, "property:next_f64");
+        const SAMPLES: usize = 200_000;
+        const BUCKETS: usize = 10;
+
+        let mut counts = [0u32; BUCKETS];
+        for _ in 0..SAMPLES {
+            let x = rng.next_f64();
+            assert!(
+                (0.0..1.0).contains(&x),
+                "next_f64 produced {x}, outside [0, 1)"
+            );
+            let bucket = ((x * BUCKETS as f64) as usize).min(BUCKETS - 1);
+            counts[bucket] += 1;
+        }
+
+        // Chi-square-style uniformity check, not a strict statistical
+        // proof: with a truly uniform generator this statistic follows a
+        // chi-square distribution with BUCKETS - 1 = 9 degrees of freedom,
+        // averaging 9 and exceeding ~27.9 only about one time in a
+        // thousand by chance. A generous threshold well above that keeps
+        // a genuinely uniform generator from ever tripping this while
+        // still catching a badly broken shift/mask (e.g. one that leaves
+        // output skewed into half the range or clustered in a few
+        // buckets).
+        let expected = SAMPLES as f64 / BUCKETS as f64;
+        let chi_square: f64 = counts
+            .iter()
+            .map(|&c| {
+                let diff = c as f64 - expected;
+                diff * diff / expected
+            })
+            .sum();
+        assert!(
+            chi_square < 50.0,
+            "next_f64 output is not reasonably uniform across buckets \
+             (chi-square statistic {chi_square:.2}, bucket counts {counts:?})"
+        );
+    }
+
+    #[test]
+    fn next_below_never_escapes_its_bound() {
+        let mut rng = SimRng::from_seed(123, "property:next_below");
+        const SAMPLES: usize = 50_000;
+
+        for &bound in &[1u32, 2, 3, 7, 16, 100, 10_000] {
+            let mut seen_nonzero = false;
+            for _ in 0..SAMPLES {
+                let v = rng.next_below(bound);
+                assert!(
+                    v < bound,
+                    "next_below({bound}) produced {v}, outside [0, {bound})"
+                );
+                seen_nonzero |= v != 0;
+            }
+            // Sanity check the sample is not degenerate (e.g. a generator
+            // that always returns 0 would still pass the bound check above).
+            if bound > 1 {
+                assert!(
+                    seen_nonzero,
+                    "next_below({bound}) returned 0 for all {SAMPLES} samples"
+                );
+            }
+        }
+    }
 }
