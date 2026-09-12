@@ -8,6 +8,7 @@
 export const copy = {
   title: "Sector Dynasties",
   subtitle: "A dynasty grows one generation at a time.",
+  timeControlsLabel: "Time controls",
   advanceOneYear: "Advance one year",
   advanceYearsLabel: "Years to advance",
   advanceYearsButton: "Advance",
@@ -17,4 +18,10 @@ export const copy = {
   citiesLabel: "Cities",
   systemsLabel: "Star systems",
   loading: "Generating the sector...",
+  sectorBrowserTitle: "Sector browser",
+  browserCitiesLabel: "Known cities",
+  browserTreasuryLabel: "City treasury",
+  cityPopulationLabel: "Population",
+  cityTreasuryLabel: "Treasury",
+  planetsCount: (count: number) => `${count} ${count === 1 ? "planet" : "planets"}`,
 };

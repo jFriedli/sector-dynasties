@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "seed": 42,
+  "clock": {
+    "tick": 360
+  },
+  "sector": {
+    "seed": 42,
+    "name": "The Meridian Sector",
+    "systems": [
+      {
+        "id": 1,
+        "name": "Kestrel",
+        "planets": [
+          {
+            "id": 2,
+            "name": "Tertia",
+            "countries": [
+              {
+                "id": 3,
+                "name": "Kestrel Union",
+                "government": {
+                  "federalism": 0.18068082161512578,
+                  "franchise": 0.5125437643666279,
+                  "economic_liberalism": 0.3581264923184829,
+                  "press_freedom": 0.6723233093161867
+                },
+                "cities": [
+                  {
+                    "id": 4,
+                    "name": "Lowmarket",
+                    "specialization": "Mining",
+                    "population": {
+                      "size": 161031,
+                      "average_wealth": 3908.7109508309086,
+                      "unemployment_rate": 0.0891771648457644
+                    },
+                    "treasury": 164800.83498815965
+                  },
+                  {
+                    "id": 5,
+                    "name": "Lowmarket",
+                    "specialization": "Manufacturing",
+                    "population": {
+                      "size": 1333790,
+                      "average_wealth": 3700.9783260823897,
+                      "unemployment_rate": 0.1555933988583179
+                    },
+                    "treasury": 1482348.000066966
+                  },
+                  {
+                    "id": 6,
+                    "name": "New Halcyon 6",
+                    "specialization": "Finance",
+                    "population": {
+                      "size": 1297605,
+                      "average_wealth": 591.7355097965889,
+                      "unemployment_rate": 0.15422857639219156
+                    },
+                    "treasury": 1889802.0856582457
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "name": "Vantar 7",
+        "planets": [
+          {
+            "id": 8,
+            "name": "Secundus 8",
+            "countries": [
+              {
+                "id": 9,
+                "name": "Kestrel Union 9",
+                "government": {
+                  "federalism": 0.3735989347030121,
+                  "franchise": 0.6686868388764647,
+                  "economic_liberalism": 0.22177131028798314,
+                  "press_freedom": 0.8977893962921153
+                },
+                "cities": [
+                  {
+                    "id": 10,
+                    "name": "Stillwater 10",
+                    "specialization": "Logistics",
+                    "population": {
+                      "size": 1878222,
+                      "average_wealth": 4086.111909928599,
+                      "unemployment_rate": 0.026812510816934112
+                    },
+                    "treasury": 2009428.5635978924
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "dynasty": {
+    "name": "House Meridian",
+    "head_character_id": 1,
+    "members": [
+      {
+        "id": 1,
+        "name": "Founder",
+        "age_years": 32,
+        "alive": true,
+        "wealth": 7834.515499273326,
+        "home_city": 4,
+        "portrait": {
+          "skin_tone": "Tan",
+          "hair_color": "Brown",
+          "hair_style": "Tied",
+          "eye_color": "Green",
+          "build": "Athletic",
+          "height_cm": 156
+        }
+      }
+    ]
+  },
+  "economy_rng": {
+    "state": [
+      13307495775863747382,
+      17194592546606498343,
+      6723773236490040650,
+      8315982057862985344
+    ]
+  }
+}
