@@ -27,7 +27,21 @@ pub struct StarSystem {
 pub struct Planet {
     pub id: EntityId,
     pub name: String,
+    /// Small set of resource tags biasing which `CitySpecialization`
+    /// worldgen picks for this planet's cities. Intentionally a short,
+    /// fixed list rather than a full resource system; see epic #4.
+    pub resource_tags: Vec<ResourceTag>,
     pub countries: Vec<Country>,
+}
+
+/// A small fixed set of planet-level resource characteristics. Kept
+/// deliberately short: this proves the worldgen hook (tags bias city
+/// specialization odds) rather than modeling a full resource economy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ResourceTag {
+    MetalRich,
+    Agricultural,
+    Arid,
 }
 
 /// A country's government is described by its components rather than a
@@ -94,6 +108,22 @@ pub struct City {
     /// Accumulated economic output, in abstract credits. Not tied to any
     /// per-unit cargo simulation; see docs/ARCHITECTURE.md Economy section.
     pub treasury: f64,
+    /// Exponentially-weighted rolling measure of recent weekly output
+    /// relative to the city's noise-free baseline (population,
+    /// specialization multiplier, no random variance). `1.0` means output
+    /// has been tracking baseline; sustained values below (above) `1.0`
+    /// mean a depressed (booming) stretch, and `economy::settle_week` uses
+    /// this to drive unemployment. Defaults to `1.0` for saves predating
+    /// this field. See `crates/sim-core/src/economy.rs`.
+    #[serde(default = "default_recent_output_index")]
+    pub recent_output_index: f64,
+}
+
+/// Default for `City::recent_output_index` on saves from before this field
+/// existed: "output has been at baseline," the same value newly generated
+/// cities start with.
+fn default_recent_output_index() -> f64 {
+    1.0
 }
 
 /// Most inhabitants are represented statistically, never as individual

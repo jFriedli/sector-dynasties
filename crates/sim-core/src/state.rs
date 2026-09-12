@@ -13,6 +13,7 @@ use crate::portrait::PortraitDescriptor;
 use crate::rng::{RngDomainSummary, SimRng};
 use crate::save::{load_and_migrate, SaveError};
 use crate::time::SimClock;
+use crate::traits;
 use crate::world::Sector;
 use crate::worldgen::generate_sector;
 
@@ -63,6 +64,7 @@ impl SimState {
             wealth: character_rng.range_f64(1_000.0, 10_000.0),
             home_city,
             portrait: PortraitDescriptor::generate_for_character(seed, founder_id),
+            traits: traits::generate_for_character(seed, founder_id),
         };
 
         let dynasty = Dynasty {
