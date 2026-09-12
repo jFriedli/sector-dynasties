@@ -96,8 +96,14 @@ impl SimState {
             economy::settle_week(&mut self.sector, &mut self.economy_rng);
         }
         if self.clock.is_year_boundary() {
-            birth::maybe_birth_child(self.seed, &mut self.dynasty, self.clock.year());
+            // Age and roll mortality before checking for a birth: this way
+            // a head who dies this year correctly has no child this year,
+            // and a newborn is never immediately aged/mortality-rolled in
+            // the same tick it's born (it would otherwise never visibly be
+            // age 0 to any external observer, since both run atomically
+            // here).
             mortality::age_and_roll_mortality(&mut self.dynasty, &mut self.mortality_rng);
+            birth::maybe_birth_child(self.seed, &mut self.dynasty, self.clock.year());
         }
         // Monthly population updates and further yearly demographic change
         // (culture) hook in here as their own systems; see
@@ -300,7 +306,6 @@ mod tests {
     }
 
     #[test]
-<<<<<<< HEAD
     fn a_fertile_head_can_gain_a_child_over_enough_years() {
         // Search a small range of seeds for one whose founder rolls a
         // birth within a generous window, rather than depending on a
@@ -325,7 +330,9 @@ mod tests {
         // and traits) must reproduce exactly, not just "a birth happened".
         assert_eq!(a.to_json(), b.to_json());
         assert!(check_invariants(&a).is_empty());
-=======
+    }
+
+    #[test]
     fn the_mortality_rng_fingerprint_advances_after_a_year_passes() {
         let state = SimState::new(2026);
         let before = state.summary().rng_domains[1].fingerprint.clone();
@@ -348,7 +355,6 @@ mod tests {
         state.step_days(crate::time::DAYS_PER_YEAR as u32);
 
         assert_eq!(state.dynasty.head().unwrap().age_years, starting_age + 1);
->>>>>>> origin/main
     }
 
     #[test]
