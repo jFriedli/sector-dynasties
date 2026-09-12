@@ -41,42 +41,60 @@ export function App() {
   }, [handle, yearsToAdvance]);
 
   if (!summary) {
-    return <p>{copy.loading}</p>;
+    return <p className="loading">{copy.loading}</p>;
   }
 
   return (
-    <main>
-      <h1>{copy.title}</h1>
-      <p>{copy.subtitle}</p>
-      <dl>
-        <dt>{copy.yearLabel}</dt>
-        <dd>{summary.year}</dd>
-        <dt>{copy.systemsLabel}</dt>
-        <dd>{summary.system_count}</dd>
-        <dt>{copy.citiesLabel}</dt>
-        <dd>{summary.city_count}</dd>
-        <dt>{copy.populationLabel}</dt>
-        <dd>{summary.total_population.toLocaleString()}</dd>
-        <dt>{summary.dynasty_name}</dt>
-        <dd>
-          {copy.wealthLabel}: {summary.dynasty_wealth.toFixed(2)}
-        </dd>
+    <main className="app-shell">
+      <header className="app-header">
+        <h1>{copy.title}</h1>
+        <p>{copy.subtitle}</p>
+      </header>
+      <dl className="summary-grid">
+        <div className="summary-item">
+          <dt>{copy.yearLabel}</dt>
+          <dd>{summary.year}</dd>
+        </div>
+        <div className="summary-item summary-item--systems">
+          <dt>{copy.systemsLabel}</dt>
+          <dd>{summary.system_count}</dd>
+        </div>
+        <div className="summary-item summary-item--cities">
+          <dt>{copy.citiesLabel}</dt>
+          <dd>{summary.city_count}</dd>
+        </div>
+        <div className="summary-item summary-item--population">
+          <dt>{copy.populationLabel}</dt>
+          <dd>{summary.total_population.toLocaleString()}</dd>
+        </div>
+        <div className="summary-item summary-item--dynasty">
+          <dt>{summary.dynasty_name}</dt>
+          <dd>
+            {copy.wealthLabel}: {summary.dynasty_wealth.toFixed(2)}
+          </dd>
+        </div>
       </dl>
-      <button onClick={advanceOneYear}>{copy.advanceOneYear}</button>
-      <label>
-        {copy.advanceYearsLabel}
-        <select
-          value={yearsToAdvance}
-          onChange={(event) => setYearsToAdvance(Number(event.target.value))}
-        >
-          {YEAR_STEP_OPTIONS.map((years) => (
-            <option key={years} value={years}>
-              {years}
-            </option>
-          ))}
-        </select>
-      </label>
-      <button onClick={advanceYears}>{copy.advanceYearsButton}</button>
+      <section className="controls" aria-label={copy.timeControlsLabel}>
+        <button className="button" onClick={advanceOneYear}>
+          {copy.advanceOneYear}
+        </button>
+        <label className="control-field">
+          {copy.advanceYearsLabel}
+          <select
+            value={yearsToAdvance}
+            onChange={(event) => setYearsToAdvance(Number(event.target.value))}
+          >
+            {YEAR_STEP_OPTIONS.map((years) => (
+              <option key={years} value={years}>
+                {years}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button className="button" onClick={advanceYears}>
+          {copy.advanceYearsButton}
+        </button>
+      </section>
     </main>
   );
 }
