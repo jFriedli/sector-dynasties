@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cityRowsFromSector, totalTreasury } from "../src/sectorBrowser";
+import { cityDetailById, cityRowsFromSector, totalTreasury } from "../src/sectorBrowser";
 import type { Sector } from "../src/simTypes";
 
 const sector: Sector = {
@@ -99,5 +99,22 @@ describe("sector browser data shaping", () => {
 
   it("aggregates displayed city treasury totals", () => {
     expect(totalTreasury(cityRowsFromSector(sector))).toBe(1270.75);
+  });
+
+  it("finds a selected city detail with population economics intact", () => {
+    expect(cityDetailById(sector, 8)).toEqual({
+      id: 8,
+      name: "Port Ember",
+      systemName: "Boreal",
+      planetName: "Boreal Station",
+      countryName: "Dock League",
+      specialization: "Logistics",
+      population: {
+        size: 3400,
+        average_wealth: 7.1,
+        unemployment_rate: 0.08,
+      },
+      treasury: 420.5,
+    });
   });
 });

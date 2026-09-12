@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import init, { SimHandle } from "./wasm/sim_wasm.js";
 import { copy } from "./content/copy";
+import { CityDetailPanel } from "./CityDetailPanel";
 import { DebugOverlay, useDebugOverlayVisible } from "./DebugOverlay";
 import { DynastyPanel } from "./DynastyPanel";
 import { SectorBrowser } from "./SectorBrowser";
 import { TimeControls } from "./TimeControls";
+import { cityDetailById } from "./sectorBrowser";
 import type { SimStateSnapshot, StateSummary } from "./simTypes";
 
 const DAYS_PER_YEAR = 360;
@@ -14,6 +16,7 @@ export function App() {
   const [handle, setHandle] = useState<SimHandle | null>(null);
   const [summary, setSummary] = useState<StateSummary | null>(null);
   const [snapshot, setSnapshot] = useState<SimStateSnapshot | null>(null);
+  const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
   const [yearsToAdvance, setYearsToAdvance] = useState<number>(5);
   const debugOverlayVisible = useDebugOverlayVisible();
 
@@ -24,7 +27,11 @@ export function App() {
       const h = new SimHandle(BigInt(42));
       setHandle(h);
       setSummary(JSON.parse(h.summary_json()) as StateSummary);
-      setSnapshot(JSON.parse(h.to_json()) as SimStateSnapshot);
+      const nextSnapshot = JSON.parse(h.to_json()) as SimStateSnapshot;
+      setSnapshot(nextSnapshot);
+      setSelectedCityId(
+        nextSnapshot.sector.systems[0]?.planets[0]?.countries[0]?.cities[0]?.id ?? null,
+      );
     });
     return () => {
       cancelled = true;
@@ -92,7 +99,16 @@ export function App() {
       />
       {debugOverlayVisible && <DebugOverlay summary={summary} />}
       <DynastyPanel members={summary.dynasty_members} />
-      <SectorBrowser sector={snapshot.sector} />
+      <div className="world-panel">
+        <SectorBrowser
+          sector={snapshot.sector}
+          selectedCityId={selectedCityId}
+          onSelectCity={setSelectedCityId}
+        />
+        <CityDetailPanel
+          city={selectedCityId ? cityDetailById(snapshot.sector, selectedCityId) : null}
+        />
+      </div>
     </main>
   );
 }
