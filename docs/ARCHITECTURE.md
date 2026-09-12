@@ -37,6 +37,13 @@ If you find yourself writing a game rule (a formula, a threshold, a decision) in
   procedural history is backlog work under the `worldgen` label.
 - `dynasty.rs` — `Character` and `Dynasty`. The player always controls
   `Dynasty::head()`; other members are simulated but not directly controlled.
+- `birth.rs` — `maybe_birth_child`, a yearly, deliberately simple fertility check
+  that can add a new `Character` as the dynasty head's child (age 0, head's
+  `home_city`). Stateless like `portrait.rs`/`traits.rs`: a pure function of the
+  world seed, the head's id, and the year, from its own `SimRng` domain
+  (`"dynasty:birth:<head_id>:<year>"`), so nothing new needs to persist on
+  `SimState`. See issue #25; richer relationship/marriage modeling is #3-epic
+  territory (#49/#23).
 - `portrait.rs` — `PortraitDescriptor`, a character's appearance as plain
   categorical/numeric traits (skin tone, hair, eyes, build, height), attached
   to `Character`. Deliberately has no image format, file path, or network

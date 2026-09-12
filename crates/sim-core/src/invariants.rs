@@ -96,6 +96,56 @@ mod tests {
     }
 
     #[test]
+    fn a_character_born_this_year_is_checked_the_same_as_any_other_member() {
+        // Find a seed/year where the founder head actually has a child, so
+        // this exercises a real birth rather than an empty no-op.
+        let (seed, year) = (0..200u64)
+            .find_map(|seed| {
+                let mut state = SimState::new(seed);
+                for year in 1..40u64 {
+                    if crate::birth::maybe_birth_child(state.seed, &mut state.dynasty, year)
+                        .is_some()
+                    {
+                        return Some((seed, year));
+                    }
+                }
+                None
+            })
+            .expect("expected at least one seed to produce a birth within 40 years");
+
+        let mut state = SimState::new(seed);
+        let child_id = crate::birth::maybe_birth_child(state.seed, &mut state.dynasty, year)
+            .expect("re-rolling the same seed and year must reproduce the same birth");
+
+        // A freshly born character starts out valid, same as any other
+        // member.
+        assert_eq!(check_invariants(&state), Vec::new());
+
+        // Corrupting *only* the new character (duplicate traits) is caught
+        // by the same generic member check every other character goes
+        // through, not a birth-specific carve-out.
+        let child = state
+            .dynasty
+            .members
+            .iter_mut()
+            .find(|c| c.id == child_id)
+            .unwrap();
+        if let Some(first_trait) = child.traits.first().copied() {
+            child.traits.push(first_trait);
+        } else {
+            child.traits.push(crate::traits::Trait::Ambitious);
+            child.traits.push(crate::traits::Trait::Ambitious);
+        }
+        let violations = check_invariants(&state);
+        assert!(
+            violations
+                .iter()
+                .any(|v| v.0.contains(&format!("id {child_id}"))),
+            "expected a violation naming the corrupted child, got {violations:?}"
+        );
+    }
+
+    #[test]
     fn an_out_of_range_social_mobility_is_caught() {
         let mut state = SimState::new(3);
         state.sector.systems[0].planets[0].countries[0].social_mobility = 1.5;
