@@ -12,6 +12,14 @@ pub fn check_invariants(state: &SimState) -> Vec<InvariantViolation> {
 
     for system in &state.sector.systems {
         for planet in &system.planets {
+            for row in &planet.resource_abundance {
+                if !row.is_valid() {
+                    violations.push(InvariantViolation(format!(
+                        "planet '{}' has an invalid resource_abundance row: {row:?}",
+                        planet.name
+                    )));
+                }
+            }
             for country in &planet.countries {
                 if !country.social_mobility.is_finite()
                     || !(0.0..=1.0).contains(&country.social_mobility)
@@ -107,6 +115,22 @@ mod tests {
     fn a_non_finite_social_mobility_is_caught() {
         let mut state = SimState::new(4);
         state.sector.systems[0].planets[0].countries[0].social_mobility = f64::NAN;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn an_out_of_range_resource_abundance_is_caught() {
+        let mut state = SimState::new(5);
+        state.sector.systems[0].planets[0].resource_abundance[0].abundance = 1.5;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_non_finite_resource_abundance_is_caught() {
+        let mut state = SimState::new(6);
+        state.sector.systems[0].planets[0].resource_abundance[0].abundance = f64::NAN;
         let violations = check_invariants(&state);
         assert!(!violations.is_empty());
     }

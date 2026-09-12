@@ -8,8 +8,8 @@
 use crate::history;
 use crate::rng::SimRng;
 use crate::world::{
-    City, CitySpecialization, Country, GovernmentProfile, Planet, PopulationGroup, ResourceTag,
-    Sector, StarSystem,
+    City, CitySpecialization, Country, GovernmentProfile, Planet, PopulationGroup,
+    ResourceAbundance, ResourceKind, ResourceTag, Sector, StarSystem,
 };
 
 const SYSTEM_NAMES: &[&str] = &["Kestrel", "Vantar", "Oridine", "Halcyon"];
@@ -74,6 +74,38 @@ fn pick_specialization(rng: &mut SimRng, tags: &[ResourceTag]) -> CitySpecializa
     SPECIALIZATIONS[rng.weighted_index(&weights)]
 }
 
+/// Relative bias a planet's resource tag applies to a resource kind's
+/// abundance roll, in the same spirit as `specialization_bias` above: it
+/// makes a `MetalRich` planet actually tend to be `Ore`-rich rather than
+/// the tag and the abundance table being unrelated coincidences. `1.0` is
+/// neutral (no bias).
+fn abundance_bias(tag: ResourceTag, kind: ResourceKind) -> f64 {
+    match (tag, kind) {
+        (ResourceTag::MetalRich, ResourceKind::Ore) => 1.8,
+        (ResourceTag::Agricultural, ResourceKind::Hydrocarbons) => 1.6,
+        (ResourceTag::Arid, ResourceKind::RareElements) => 1.7,
+        _ => 1.0,
+    }
+}
+
+/// Generate a planet's resource-abundance table: exactly one row per
+/// `ResourceKind::ALL`, each an independent roll biased by the planet's
+/// resource tags via `abundance_bias`.
+fn generate_resource_abundance(rng: &mut SimRng, tags: &[ResourceTag]) -> Vec<ResourceAbundance> {
+    ResourceKind::ALL
+        .iter()
+        .map(|&kind| {
+            let bias = tags
+                .iter()
+                .map(|&tag| abundance_bias(tag, kind))
+                .product::<f64>();
+            let base = rng.range_f64(0.05, 0.6);
+            let abundance = (base * bias).min(1.0);
+            ResourceAbundance { kind, abundance }
+        })
+        .collect()
+}
+
 /// Generate a sector deterministically from `seed`. Calling this twice with
 /// the same seed always produces an identical `Sector`.
 pub fn generate_sector(seed: u64, system_count: u32) -> Sector {
@@ -107,6 +139,7 @@ fn generate_planet(rng: &mut SimRng, next_id: &mut u32) -> Planet {
     let id = take_id(next_id);
     let name = name_for(PLANET_NAMES, rng.pick_index(PLANET_NAMES.len()), id);
     let resource_tags = generate_resource_tags(rng);
+    let resource_abundance = generate_resource_abundance(rng, &resource_tags);
     let country_count = 1 + rng.next_below(2);
 
     let countries = (0..country_count)
@@ -117,6 +150,7 @@ fn generate_planet(rng: &mut SimRng, next_id: &mut u32) -> Planet {
         id,
         name,
         resource_tags,
+        resource_abundance,
         countries,
     }
 }
@@ -324,6 +358,81 @@ mod tests {
             .flat_map(|s| s.planets.iter().map(|p| p.resource_tags.clone()))
             .collect();
         assert_eq!(tags_a, tags_b);
+    }
+
+    #[test]
+    fn every_planet_has_a_full_resource_abundance_table() {
+        let sector = generate_sector(2025, 4);
+        for system in &sector.systems {
+            for planet in &system.planets {
+                assert_eq!(
+                    planet.resource_abundance.len(),
+                    ResourceKind::ALL.len(),
+                    "planet {} does not have exactly one abundance row per resource kind",
+                    planet.name
+                );
+                for (row, &expected_kind) in planet
+                    .resource_abundance
+                    .iter()
+                    .zip(ResourceKind::ALL.iter())
+                {
+                    assert_eq!(
+                        row.kind, expected_kind,
+                        "planet {} has abundance rows out of `ResourceKind::ALL` order",
+                        planet.name
+                    );
+                    assert!(
+                        row.is_valid(),
+                        "planet {} has an invalid abundance row: {row:?}",
+                        planet.name
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn same_seed_produces_the_same_resource_abundance() {
+        let a = generate_sector(888, 3);
+        let b = generate_sector(888, 3);
+        let abundance_a: Vec<Vec<ResourceAbundance>> = a
+            .systems
+            .iter()
+            .flat_map(|s| s.planets.iter().map(|p| p.resource_abundance.clone()))
+            .collect();
+        let abundance_b: Vec<Vec<ResourceAbundance>> = b
+            .systems
+            .iter()
+            .flat_map(|s| s.planets.iter().map(|p| p.resource_abundance.clone()))
+            .collect();
+        assert_eq!(abundance_a, abundance_b);
+    }
+
+    fn average_ore_abundance(tags: &[ResourceTag], samples: usize, seed: u64) -> f64 {
+        let mut rng = SimRng::from_seed(seed, "test:abundance-bias");
+        let total: f64 = (0..samples)
+            .map(|_| {
+                generate_resource_abundance(&mut rng, tags)
+                    .into_iter()
+                    .find(|row| row.kind == ResourceKind::Ore)
+                    .unwrap()
+                    .abundance
+            })
+            .sum();
+        total / samples as f64
+    }
+
+    #[test]
+    fn metal_rich_planets_are_biased_toward_higher_ore_abundance() {
+        const SAMPLES: usize = 5_000;
+
+        let baseline = average_ore_abundance(&[], SAMPLES, 1);
+        let biased = average_ore_abundance(&[ResourceTag::MetalRich], SAMPLES, 2);
+        assert!(
+            biased > baseline * 1.3,
+            "expected metal-rich planets to average higher Ore abundance \
+             ({biased:.3}) than untagged planets ({baseline:.3}) by a wide margin"
+        );
     }
 
     fn country_backstories(sector: &Sector) -> Vec<String> {
