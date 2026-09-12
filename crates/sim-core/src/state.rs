@@ -32,7 +32,15 @@ impl SimState {
     /// Build a brand new game from a seed: generate the sector and found
     /// the player's starting dynasty in its first city.
     pub fn new(seed: u64) -> Self {
-        let sector = generate_sector(seed, STARTING_SYSTEM_COUNT);
+        Self::new_with_system_count(seed, STARTING_SYSTEM_COUNT)
+    }
+
+    /// Like `new`, but with an explicit system count instead of the default.
+    /// Exists so callers (namely the `sim-cli` seed presets, see issue #21)
+    /// can vary sector size without a duplicated founding routine drifting
+    /// out of sync with `new`.
+    pub fn new_with_system_count(seed: u64, system_count: u32) -> Self {
+        let sector = generate_sector(seed, system_count);
         let mut character_rng = SimRng::from_seed(seed, "dynasty");
 
         let home_city = sector
@@ -207,6 +215,19 @@ mod tests {
                 supported
             } if found == SAVE_SCHEMA_VERSION + 1 && supported == SAVE_SCHEMA_VERSION
         ));
+    }
+
+    #[test]
+    fn new_with_system_count_respects_the_requested_count() {
+        let state = SimState::new_with_system_count(7, 5);
+        assert_eq!(state.sector.systems.len(), 5);
+    }
+
+    #[test]
+    fn new_matches_new_with_system_count_at_the_default() {
+        let a = SimState::new(2020);
+        let b = SimState::new_with_system_count(2020, STARTING_SYSTEM_COUNT);
+        assert_eq!(a.to_json(), b.to_json());
     }
 
     #[test]
