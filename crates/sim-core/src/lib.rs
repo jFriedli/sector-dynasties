@@ -5,6 +5,7 @@
 //! unmodified. See docs/ARCHITECTURE.md for the module map and the reasoning
 //! behind this boundary.
 
+pub mod career;
 pub mod career_ai;
 pub mod culture;
 pub mod dynasty;
@@ -16,6 +17,7 @@ pub mod rng;
 pub mod save;
 pub mod state;
 pub mod time;
+pub mod traits;
 pub mod world;
 pub mod worldgen;
 
