@@ -32,7 +32,16 @@ impl SimState {
     /// Build a brand new game from a seed: generate the sector and found
     /// the player's starting dynasty in its first city.
     pub fn new(seed: u64) -> Self {
-        let sector = generate_sector(seed, STARTING_SYSTEM_COUNT);
+        Self::new_with_system_count(seed, STARTING_SYSTEM_COUNT)
+    }
+
+    /// Like [`SimState::new`], but with an explicit system count instead of
+    /// the bootstrap default. Exists so callers that need a larger sector
+    /// (currently: the `step_days` benchmark in `benches/step_days.rs`, to
+    /// compare performance at different sector sizes) don't have to
+    /// reconstruct `SimState` by hand from a private field set.
+    pub fn new_with_system_count(seed: u64, system_count: u32) -> Self {
+        let sector = generate_sector(seed, system_count);
         let mut character_rng = SimRng::from_seed(seed, "dynasty");
 
         let home_city = sector

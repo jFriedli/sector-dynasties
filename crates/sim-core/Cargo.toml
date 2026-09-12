@@ -14,3 +14,13 @@ serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 
 [dev-dependencies]
+criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+
+# `test = false` keeps `cargo test --workspace` from also executing the full
+# criterion run (harness = false means the binary's main() *is* the
+# benchmark loop, so without this cargo test would run it as a slow "test").
+# Benchmarks are invoked explicitly via `cargo bench -p sim-core`.
+[[bench]]
+name = "step_days"
+harness = false
+test = false
