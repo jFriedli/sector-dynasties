@@ -2,6 +2,11 @@
 # Cargo.lock is committed: sim-cli is an application binary, and CI/agents
 # should build against exactly the same dependency versions.
 
+# The Tauri Linux packaging spike (issue #102) is its own Cargo workspace
+# (see web/src-tauri/Cargo.toml); its build output lives under its own
+# target/ dir, not the root one the line above covers.
+web/src-tauri/target
+
 # Node / frontend
 web/node_modules
 web/dist
