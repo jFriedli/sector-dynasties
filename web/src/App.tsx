@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import init, { SimHandle } from "./wasm/sim_wasm.js";
 import { copy } from "./content/copy";
+import { DebugOverlay, useDebugOverlayVisible } from "./DebugOverlay";
 import { SectorBrowser } from "./SectorBrowser";
 import { TimeControls } from "./TimeControls";
 import type { SimStateSnapshot, StateSummary } from "./simTypes";
@@ -13,6 +14,7 @@ export function App() {
   const [summary, setSummary] = useState<StateSummary | null>(null);
   const [snapshot, setSnapshot] = useState<SimStateSnapshot | null>(null);
   const [yearsToAdvance, setYearsToAdvance] = useState<number>(5);
+  const debugOverlayVisible = useDebugOverlayVisible();
 
   useEffect(() => {
     let cancelled = false;
@@ -87,6 +89,7 @@ export function App() {
         onAdvanceOneYear={advanceOneYear}
         onAdvanceYears={advanceYears}
       />
+      {debugOverlayVisible && <DebugOverlay summary={summary} />}
       <SectorBrowser sector={snapshot.sector} />
     </main>
   );
