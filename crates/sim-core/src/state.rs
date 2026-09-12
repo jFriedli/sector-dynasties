@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::birth;
-use crate::dynasty::{Character, Dynasty};
+use crate::dynasty::{Character, Dynasty, DynastyMemberSummary};
 use crate::economy;
 use crate::mortality;
 use crate::portrait::PortraitDescriptor;
@@ -144,6 +144,7 @@ impl SimState {
             total_population,
             dynasty_name: self.dynasty.name.clone(),
             dynasty_wealth: self.dynasty.total_wealth(),
+            dynasty_members: self.dynasty.member_summaries(),
             rng_domains: self.rng_domain_summaries(),
         }
     }
@@ -194,6 +195,7 @@ pub struct StateSummary {
     pub total_population: u64,
     pub dynasty_name: String,
     pub dynasty_wealth: f64,
+    pub dynasty_members: Vec<DynastyMemberSummary>,
     pub rng_domains: Vec<RngDomainSummary>,
 }
 
@@ -282,6 +284,18 @@ mod tests {
         assert_eq!(summary.rng_domains.len(), 2);
         assert_eq!(summary.rng_domains[0].domain, "economy");
         assert_eq!(summary.rng_domains[1].domain, "dynasty:mortality");
+    }
+
+    #[test]
+    fn summary_reports_the_founding_dynasty_member_as_head() {
+        let state = SimState::new(2026);
+        let summary = state.summary();
+        assert_eq!(summary.dynasty_members.len(), 1);
+        assert_eq!(
+            summary.dynasty_members[0].role,
+            crate::dynasty::DynastyRole::Head
+        );
+        assert!(summary.dynasty_members[0].alive);
     }
 
     #[test]

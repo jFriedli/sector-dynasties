@@ -11,6 +11,7 @@ pub mod career_ai;
 pub mod culture;
 pub mod dynasty;
 pub mod economy;
+pub mod history;
 pub mod invariants;
 pub mod mortality;
 pub mod portrait;

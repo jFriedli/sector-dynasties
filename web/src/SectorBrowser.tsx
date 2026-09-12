@@ -49,6 +49,7 @@ export function SectorBrowser({ sector }: SectorBrowserProps) {
                     {planet.countries.map((country) => (
                       <section className="country-panel" key={country.id}>
                         <h4>{country.name}</h4>
+                        <p className="country-backstory">{country.backstory}</p>
                         <div className="city-list">
                           {country.cities.map((city) => (
                             <article className="city-row" key={city.id}>

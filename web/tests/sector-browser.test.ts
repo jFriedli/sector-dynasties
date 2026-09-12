@@ -17,6 +17,8 @@ const sector: Sector = {
             {
               id: 3,
               name: "North Compact",
+              backstory:
+                "North Compact was founded by colonists seeking independence from the old planetary charters.",
               cities: [
                 {
                   id: 4,
@@ -46,6 +48,8 @@ const sector: Sector = {
             {
               id: 7,
               name: "Dock League",
+              backstory:
+                "Dock League was formed when several rival settlements agreed to a single unified charter.",
               cities: [
                 {
                   id: 8,

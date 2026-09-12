@@ -6,6 +6,19 @@ export interface RngDomainSummary {
   fingerprint: string;
 }
 
+// Mirrors sim_core::dynasty::DynastyRole.
+export type DynastyRole = "Head" | "Member";
+
+// Mirrors sim_core::dynasty::DynastyMemberSummary. See DynastyPanel.tsx and
+// issue #31.
+export interface DynastyMemberSummary {
+  id: number;
+  name: string;
+  age_years: number;
+  alive: boolean;
+  role: DynastyRole;
+}
+
 // Mirrors sim_core::state::StateSummary. Kept as a hand-written type
 // rather than a generated one for the bootstrap slice; see the backlog
 // item under `tooling` for generating this from the Rust definition so the
@@ -19,6 +32,7 @@ export interface StateSummary {
   total_population: number;
   dynasty_name: string;
   dynasty_wealth: number;
+  dynasty_members: DynastyMemberSummary[];
   rng_domains: RngDomainSummary[];
 }
 
@@ -41,6 +55,7 @@ export interface City {
 export interface Country {
   id: number;
   name: string;
+  backstory: string;
   cities: City[];
 }
 

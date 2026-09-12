@@ -179,6 +179,74 @@ select:focus-visible {
   font-size: 1.125rem;
 }
 
+.dynasty-panel {
+  display: grid;
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.dynasty-panel h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.dynasty-member-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dynasty-member-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.dynasty-member-row--deceased {
+  background: var(--color-surface-muted);
+  opacity: 0.75;
+}
+
+.dynasty-member-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dynasty-member-name {
+  font-weight: 800;
+}
+
+.dynasty-member-row--deceased .dynasty-member-name {
+  text-decoration: line-through;
+}
+
+.dynasty-member-role {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.dynasty-member-status {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: right;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
 .sector-browser {
   display: grid;
   gap: 16px;
@@ -312,10 +380,17 @@ select:focus-visible {
 }
 
 .country-panel h4 {
-  margin-bottom: 10px;
+  margin-bottom: 4px;
   color: var(--color-text-muted);
   font-size: 0.95rem;
   letter-spacing: 0;
+}
+
+.country-backstory {
+  margin: 0 0 10px;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
 }
 
 .city-row {

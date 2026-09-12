@@ -13,6 +13,14 @@ pub fn check_invariants(state: &SimState) -> Vec<InvariantViolation> {
     for system in &state.sector.systems {
         for planet in &system.planets {
             for country in &planet.countries {
+                if !country.social_mobility.is_finite()
+                    || !(0.0..=1.0).contains(&country.social_mobility)
+                {
+                    violations.push(InvariantViolation(format!(
+                        "country '{}' has an invalid social_mobility: {}",
+                        country.name, country.social_mobility
+                    )));
+                }
                 for city in &country.cities {
                     if !city.population.is_valid() {
                         violations.push(InvariantViolation(format!(
@@ -135,5 +143,21 @@ mod tests {
                 .any(|v| v.0.contains(&format!("id {child_id}"))),
             "expected a violation naming the corrupted child, got {violations:?}"
         );
+    }
+
+    #[test]
+    fn an_out_of_range_social_mobility_is_caught() {
+        let mut state = SimState::new(3);
+        state.sector.systems[0].planets[0].countries[0].social_mobility = 1.5;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_non_finite_social_mobility_is_caught() {
+        let mut state = SimState::new(4);
+        state.sector.systems[0].planets[0].countries[0].social_mobility = f64::NAN;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
     }
 }
