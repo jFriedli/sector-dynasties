@@ -60,6 +60,44 @@ impl Dynasty {
     pub fn total_wealth(&self) -> f64 {
         self.members.iter().map(|c| c.wealth).sum()
     }
+
+    /// A compact, UI/CLI-friendly view of every member, for the dynasty
+    /// panel (see issue #31). Kept alongside `StateSummary` so the wasm
+    /// bridge never has to reach around it for member detail.
+    pub fn member_summaries(&self) -> Vec<DynastyMemberSummary> {
+        self.members
+            .iter()
+            .map(|character| DynastyMemberSummary {
+                id: character.id,
+                name: character.name.clone(),
+                age_years: character.age_years,
+                alive: character.alive,
+                role: if character.id == self.head_character_id {
+                    DynastyRole::Head
+                } else {
+                    DynastyRole::Member
+                },
+            })
+            .collect()
+    }
+}
+
+/// A single dynasty member's row in the dynasty panel: enough to render
+/// name, age, alive/dead, and role without exposing the full `Character`
+/// (portrait descriptor, traits, wealth, and so on aren't needed there).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DynastyMemberSummary {
+    pub id: EntityId,
+    pub name: String,
+    pub age_years: u32,
+    pub alive: bool,
+    pub role: DynastyRole,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub enum DynastyRole {
+    Head,
+    Member,
 }
 
 #[cfg(test)]
@@ -96,6 +134,57 @@ mod tests {
         };
         assert_eq!(dynasty.head().unwrap().name, "Heir");
         assert_eq!(dynasty.total_wealth(), 1200.0);
+    }
+
+    #[test]
+    fn member_summaries_mark_the_head_and_preserve_alive_state() {
+        let dynasty = Dynasty {
+            name: "House Vantar".into(),
+            head_character_id: 2,
+            members: vec![
+                Character {
+                    id: 1,
+                    name: "Elder".into(),
+                    age_years: 70,
+                    alive: false,
+                    wealth: 0.0,
+                    home_city: None,
+                    portrait: PortraitDescriptor::generate_for_character(0, 1),
+                    traits: crate::traits::generate_for_character(0, 1),
+                },
+                Character {
+                    id: 2,
+                    name: "Heir".into(),
+                    age_years: 34,
+                    alive: true,
+                    wealth: 1200.0,
+                    home_city: Some(1),
+                    portrait: PortraitDescriptor::generate_for_character(0, 2),
+                    traits: crate::traits::generate_for_character(0, 2),
+                },
+            ],
+        };
+
+        let summaries = dynasty.member_summaries();
+        assert_eq!(
+            summaries,
+            vec![
+                DynastyMemberSummary {
+                    id: 1,
+                    name: "Elder".into(),
+                    age_years: 70,
+                    alive: false,
+                    role: DynastyRole::Member,
+                },
+                DynastyMemberSummary {
+                    id: 2,
+                    name: "Heir".into(),
+                    age_years: 34,
+                    alive: true,
+                    role: DynastyRole::Head,
+                },
+            ]
+        );
     }
 
     #[test]

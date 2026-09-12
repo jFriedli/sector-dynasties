@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import init, { SimHandle } from "./wasm/sim_wasm.js";
 import { copy } from "./content/copy";
 import { DebugOverlay, useDebugOverlayVisible } from "./DebugOverlay";
+import { DynastyPanel } from "./DynastyPanel";
 import { SectorBrowser } from "./SectorBrowser";
 import { TimeControls } from "./TimeControls";
 import type { SimStateSnapshot, StateSummary } from "./simTypes";
@@ -90,6 +91,7 @@ export function App() {
         onAdvanceYears={advanceYears}
       />
       {debugOverlayVisible && <DebugOverlay summary={summary} />}
+      <DynastyPanel members={summary.dynasty_members} />
       <SectorBrowser sector={snapshot.sector} />
     </main>
   );

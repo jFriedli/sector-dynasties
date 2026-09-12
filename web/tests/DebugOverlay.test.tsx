@@ -19,6 +19,7 @@ const SUMMARY: StateSummary = {
   total_population: 1000,
   dynasty_name: "House Meridian",
   dynasty_wealth: 500,
+  dynasty_members: [{ id: 1, name: "Founder", age_years: 34, alive: true, role: "Head" }],
   rng_domains: [{ domain: "economy", fingerprint: "deadbeefcafef00d" }],
 };
 
