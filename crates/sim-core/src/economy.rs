@@ -25,7 +25,37 @@ const OUTPUT_INDEX_SMOOTHING: f64 = 0.12;
 /// moves unemployment per week, on top of the existing residual noise.
 /// Tuned so a genuinely depressed multi-week stretch clearly outpaces
 /// ordinary noise-driven drift.
-const UNEMPLOYMENT_OUTPUT_SENSITIVITY: f64 = 0.05;
+///
+/// Originally `0.05`. A 50-year soak run (see issue #106 and
+/// `crates/sim-core/tests/soak.rs`) showed `unemployment_rate` behaving as
+/// an unbiased random walk with no mean reversion, bounded only by
+/// `settle_week`'s `[0.01, 0.35]` clamp: across a few seeds, city
+/// unemployment after 50 simulated years was roughly uniformly spread
+/// across that whole range, with some cities sitting pinned at the `0.35`
+/// ceiling. Neither this constant nor
+/// `UNEMPLOYMENT_RESIDUAL_NOISE_HALF_RANGE` alone drives that spread (a
+/// standalone soak-length simulation cutting just one of the two barely
+/// changed the outcome's spread); the two compound, so both are lowered
+/// together. Cutting this one on its own to `0.02` still keeps a sustained
+/// depression's effect on unemployment clearly ahead of ordinary drift (see
+/// `sustained_output_shortfall_raises_unemployment_more_than_baseline_noise_would`),
+/// while cutting it further starts to erode that margin.
+const UNEMPLOYMENT_OUTPUT_SENSITIVITY: f64 = 0.02;
+
+/// Half-width of the weekly unemployment residual noise draw (uniform over
+/// `[-UNEMPLOYMENT_RESIDUAL_NOISE_HALF_RANGE,
+/// UNEMPLOYMENT_RESIDUAL_NOISE_HALF_RANGE]`), applied every week regardless
+/// of the output-driven term above.
+///
+/// Originally `0.01`, cut to `0.002` alongside
+/// `UNEMPLOYMENT_OUTPUT_SENSITIVITY` above for the same 50-year soak finding:
+/// the two noise sources compound over a long run, so trimming only one left
+/// the spread barely changed. Cutting both together brought a 50-year,
+/// several-seed soak run's city unemployment standard deviation down by
+/// roughly a third and eliminated cities pinning at the `0.35` ceiling,
+/// while unemployment still drifts and responds to sustained output shocks
+/// week to week.
+const UNEMPLOYMENT_RESIDUAL_NOISE_HALF_RANGE: f64 = 0.002;
 
 /// Wage share of weekly output at `Country::social_mobility == 0.0`: a
 /// rigid society where gains mostly stay concentrated rather than reaching
@@ -114,7 +144,10 @@ pub fn settle_week(sector: &mut Sector, rng: &mut SimRng) {
                     city.recent_output_index =
                         update_output_index(city.recent_output_index, output_ratio);
 
-                    let residual_noise = rng.range_f64(-0.01, 0.01);
+                    let residual_noise = rng.range_f64(
+                        -UNEMPLOYMENT_RESIDUAL_NOISE_HALF_RANGE,
+                        UNEMPLOYMENT_RESIDUAL_NOISE_HALF_RANGE,
+                    );
                     let drift = unemployment_drift(city.recent_output_index, residual_noise);
                     city.population.unemployment_rate =
                         (city.population.unemployment_rate + drift).clamp(0.01, 0.35);
