@@ -54,8 +54,13 @@ jobs:
           workspaces: |
             web/src-tauri -> target
       - name: install wasm-pack
-        shell: pwsh
-        run: iwr https://rustwasm.github.io/wasm-pack/installer/init.ps1 -useb | iex
+        # Not the curl/iwr installer script the other jobs use: its Windows
+        # (.ps1) endpoint currently 404s (confirmed via this job failing),
+        # unlike the Unix (.sh) one the frontend job still relies on. `cargo
+        # install` is slower here but doesn't depend on that installer's
+        # continued existence, and the binary lands in ~/.cargo/bin, which
+        # Swatinem/rust-cache above already caches.
+        run: cargo install wasm-pack --locked
       - uses: actions/setup-node@v4
         with:
           node-version: 24
