@@ -73,6 +73,33 @@ pub fn check_invariants(state: &SimState) -> Vec<InvariantViolation> {
         ));
     }
 
+    for business in &state.businesses {
+        if !business.is_valid() {
+            violations.push(InvariantViolation(format!(
+                "business '{}' (id {}) has an invalid equity: {}",
+                business.name, business.id, business.equity
+            )));
+        }
+        if !state
+            .dynasty
+            .members
+            .iter()
+            .any(|c| c.id == business.owner_character_id)
+        {
+            violations.push(InvariantViolation(format!(
+                "business '{}' (id {}) owner_character_id {} does not reference an existing \
+                 dynasty member",
+                business.name, business.id, business.owner_character_id
+            )));
+        }
+        if state.sector.find_city(business.host_city_id).is_none() {
+            violations.push(InvariantViolation(format!(
+                "business '{}' (id {}) host_city_id {} does not reference an existing city",
+                business.name, business.id, business.host_city_id
+            )));
+        }
+    }
+
     violations
 }
 
@@ -183,5 +210,80 @@ mod tests {
         state.sector.systems[0].planets[0].resource_abundance[0].abundance = f64::NAN;
         let violations = check_invariants(&state);
         assert!(!violations.is_empty());
+    }
+
+    fn mining_city_id(state: &SimState) -> crate::world::EntityId {
+        state
+            .sector
+            .systems
+            .iter()
+            .flat_map(|s| &s.planets)
+            .flat_map(|p| &p.countries)
+            .flat_map(|c| &c.cities)
+            .find(|c| c.specialization == crate::world::CitySpecialization::Mining)
+            .expect("test seed should generate at least one mining city")
+            .id
+    }
+
+    #[test]
+    fn a_non_finite_business_equity_is_caught() {
+        let mut state = SimState::new(5);
+        let host_city_id = mining_city_id(&state);
+        state
+            .found_business(
+                "Ferrous Extraction Co.".to_string(),
+                crate::business::BusinessArchetype::Mining,
+                host_city_id,
+            )
+            .unwrap();
+        state.businesses[0].equity = f64::NAN;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_business_owned_by_an_unknown_character_is_caught() {
+        let mut state = SimState::new(6);
+        let host_city_id = mining_city_id(&state);
+        state
+            .found_business(
+                "Ferrous Extraction Co.".to_string(),
+                crate::business::BusinessArchetype::Mining,
+                host_city_id,
+            )
+            .unwrap();
+        state.businesses[0].owner_character_id = 999_999;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_business_hosted_in_an_unknown_city_is_caught() {
+        let mut state = SimState::new(7);
+        let host_city_id = mining_city_id(&state);
+        state
+            .found_business(
+                "Ferrous Extraction Co.".to_string(),
+                crate::business::BusinessArchetype::Mining,
+                host_city_id,
+            )
+            .unwrap();
+        state.businesses[0].host_city_id = 999_999;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_freshly_founded_business_has_no_violations() {
+        let mut state = SimState::new(8);
+        let host_city_id = mining_city_id(&state);
+        state
+            .found_business(
+                "Ferrous Extraction Co.".to_string(),
+                crate::business::BusinessArchetype::Mining,
+                host_city_id,
+            )
+            .unwrap();
+        assert_eq!(check_invariants(&state), Vec::new());
     }
 }
