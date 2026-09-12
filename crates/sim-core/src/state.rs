@@ -8,6 +8,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::birth;
+use crate::business::{self, Business, BusinessArchetype, FoundBusinessError};
 use crate::dynasty::{Character, Dynasty, DynastyMemberSummary};
 use crate::economy;
 use crate::mortality;
@@ -16,7 +17,7 @@ use crate::rng::{RngDomainSummary, SimRng};
 use crate::save::{load_and_migrate, SaveError};
 use crate::time::SimClock;
 use crate::traits;
-use crate::world::Sector;
+use crate::world::{EntityId, Sector};
 use crate::worldgen::generate_sector;
 
 pub const SAVE_SCHEMA_VERSION: u32 = 1;
@@ -29,6 +30,11 @@ pub struct SimState {
     pub clock: SimClock,
     pub sector: Sector,
     pub dynasty: Dynasty,
+    /// Every founded business, regardless of owner. Empty on a save from
+    /// before businesses existed; see `business::found_business` for how
+    /// new ones are created.
+    #[serde(default)]
+    pub businesses: Vec<Business>,
     economy_rng: SimRng,
     mortality_rng: SimRng,
 }
@@ -82,9 +88,33 @@ impl SimState {
             clock: SimClock::new(),
             sector,
             dynasty,
+            businesses: Vec::new(),
             economy_rng: SimRng::from_seed(seed, "economy"),
             mortality_rng: SimRng::from_seed(seed, "dynasty:mortality"),
         }
+    }
+
+    /// Found a new business on behalf of the dynasty head, hosted in the
+    /// city with id `host_city_id`. Fails without mutating `self` if the
+    /// city doesn't exist or its specialization doesn't match what
+    /// `archetype` requires; see `business::found_business_by_city_id`.
+    pub fn found_business(
+        &mut self,
+        name: String,
+        archetype: BusinessArchetype,
+        host_city_id: EntityId,
+    ) -> Result<EntityId, FoundBusinessError> {
+        let id = self.businesses.iter().map(|b| b.id).max().unwrap_or(0) + 1;
+        let founded = business::found_business_by_city_id(
+            &self.sector,
+            id,
+            name,
+            archetype,
+            self.dynasty.head_character_id,
+            host_city_id,
+        )?;
+        self.businesses.push(founded);
+        Ok(id)
     }
 
     /// Advance the simulation by one day. Lower-frequency systems check the
@@ -94,6 +124,7 @@ impl SimState {
 
         if self.clock.is_week_boundary() {
             economy::settle_week(&mut self.sector, &mut self.economy_rng);
+            business::settle_week(&mut self.businesses, &self.sector, &mut self.dynasty);
         }
         if self.clock.is_year_boundary() {
             // Age and roll mortality before checking for a birth: this way

@@ -16,6 +16,35 @@ pub struct Sector {
     pub systems: Vec<StarSystem>,
 }
 
+impl Sector {
+    /// Look up a city anywhere in the hierarchy by id. Returns `None` for a
+    /// stale or unknown id rather than panicking, since callers that hold
+    /// only an `EntityId` reference (e.g. `crate::business`) must treat a
+    /// dangling reference as a recoverable condition, not a bug that
+    /// crashes the tick.
+    pub fn find_city(&self, id: EntityId) -> Option<&City> {
+        self.systems
+            .iter()
+            .flat_map(|s| &s.planets)
+            .flat_map(|p| &p.countries)
+            .flat_map(|c| &c.cities)
+            .find(|city| city.id == id)
+    }
+
+    /// Look up the country that hosts the city with the given id. Returns
+    /// `None` for a stale or unknown city id, for the same reason as
+    /// [`Sector::find_city`]: callers holding only an `EntityId` (e.g.
+    /// `crate::business` reading a host country's `union_power`) must
+    /// treat a dangling reference as recoverable, not a crash.
+    pub fn find_country_for_city(&self, city_id: EntityId) -> Option<&Country> {
+        self.systems
+            .iter()
+            .flat_map(|s| &s.planets)
+            .flat_map(|p| &p.countries)
+            .find(|country| country.cities.iter().any(|city| city.id == city_id))
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StarSystem {
     pub id: EntityId,
