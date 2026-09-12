@@ -18,5 +18,6 @@ pub mod time;
 pub mod world;
 pub mod worldgen;
 
+pub use rng::RngDomainSummary;
 pub use save::SaveError;
 pub use state::{SimState, StateSummary};

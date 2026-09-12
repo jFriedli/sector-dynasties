@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import init, { SimHandle } from "./wasm/sim_wasm.js";
 import { copy } from "./content/copy";
+import { DebugOverlay, useDebugOverlayVisible } from "./DebugOverlay";
 import type { StateSummary } from "./simTypes";
 
 const DAYS_PER_YEAR = 360;
@@ -10,6 +11,7 @@ export function App() {
   const [handle, setHandle] = useState<SimHandle | null>(null);
   const [summary, setSummary] = useState<StateSummary | null>(null);
   const [yearsToAdvance, setYearsToAdvance] = useState<number>(5);
+  const debugOverlayVisible = useDebugOverlayVisible();
 
   useEffect(() => {
     let cancelled = false;
@@ -77,6 +79,7 @@ export function App() {
         </select>
       </label>
       <button onClick={advanceYears}>{copy.advanceYearsButton}</button>
+      {debugOverlayVisible && <DebugOverlay summary={summary} />}
     </main>
   );
 }

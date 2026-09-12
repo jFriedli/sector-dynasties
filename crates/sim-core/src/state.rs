@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::dynasty::{Character, Dynasty};
 use crate::economy;
 use crate::portrait::PortraitDescriptor;
-use crate::rng::SimRng;
+use crate::rng::{RngDomainSummary, SimRng};
 use crate::save::{load_and_migrate, SaveError};
 use crate::time::SimClock;
 use crate::world::Sector;
@@ -122,12 +122,24 @@ impl SimState {
         StateSummary {
             tick: self.clock.tick,
             year: self.clock.year(),
+            seed: self.seed,
             system_count: self.sector.systems.len(),
             city_count,
             total_population,
             dynasty_name: self.dynasty.name.clone(),
             dynasty_wealth: self.dynasty.total_wealth(),
+            rng_domains: self.rng_domain_summaries(),
         }
+    }
+
+    /// Debug-only snapshot of every RNG stream currently persisted on
+    /// `SimState`, for the debug overlay (see issue #35). When a new
+    /// persisted stream is added to this struct, add one line here so it
+    /// shows up too; there is intentionally no reflection magic for this
+    /// since the set of streams changes rarely and explicitness keeps this
+    /// list trustworthy.
+    fn rng_domain_summaries(&self) -> Vec<RngDomainSummary> {
+        vec![RngDomainSummary::new("economy", &self.economy_rng)]
     }
 
     pub fn to_json(&self) -> String {
@@ -147,15 +159,23 @@ impl SimState {
 
 /// A compact, UI/CLI-friendly view of the state, so callers don't need to
 /// walk the full hierarchy just to show a status line.
+///
+/// `seed` and `rng_domains` exist for the debug overlay (issue #35) rather
+/// than for gameplay: they let a developer confirm which seed a run started
+/// from and see RNG streams actually advancing, without exposing the raw
+/// `SimState`. Both flow through the existing JSON summary, so adding more
+/// debug fields later never requires changing the wasm bridge.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct StateSummary {
     pub tick: u64,
     pub year: u64,
+    pub seed: u64,
     pub system_count: usize,
     pub city_count: usize,
     pub total_population: u64,
     pub dynasty_name: String,
     pub dynasty_wealth: f64,
+    pub rng_domains: Vec<RngDomainSummary>,
 }
 
 #[cfg(test)]
@@ -233,6 +253,36 @@ mod tests {
         let a = SimState::new(2020);
         let b = SimState::new_with_system_count(2020, STARTING_SYSTEM_COUNT);
         assert_eq!(a.to_json(), b.to_json());
+    }
+
+    #[test]
+    fn summary_reports_the_seed_and_the_economy_rng_domain() {
+        let state = SimState::new(2026);
+        let summary = state.summary();
+        assert_eq!(summary.seed, 2026);
+        assert_eq!(summary.rng_domains.len(), 1);
+        assert_eq!(summary.rng_domains[0].domain, "economy");
+    }
+
+    #[test]
+    fn same_seed_and_step_count_produce_an_identical_summary() {
+        let mut a = SimState::new(2026);
+        let mut b = SimState::new(2026);
+        a.step_days(400);
+        b.step_days(400);
+        assert_eq!(a.summary(), b.summary());
+    }
+
+    #[test]
+    fn the_economy_rng_fingerprint_advances_after_a_settled_week() {
+        let state = SimState::new(2026);
+        let before = state.summary().rng_domains[0].fingerprint.clone();
+
+        let mut state = state;
+        state.step_days(7);
+        let after = state.summary().rng_domains[0].fingerprint.clone();
+
+        assert_ne!(before, after);
     }
 
     #[test]

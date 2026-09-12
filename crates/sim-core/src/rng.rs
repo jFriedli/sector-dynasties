@@ -86,6 +86,37 @@ impl SimRng {
     pub fn pick_index(&mut self, len: usize) -> usize {
         self.next_below(len as u32) as usize
     }
+
+    /// A short hex fingerprint of this stream's current internal state, for
+    /// debug display only (see [`RngDomainSummary`]). It changes every time
+    /// the stream is drawn from, so watching it across ticks in the debug
+    /// overlay shows a domain's stream actually advancing. Not used by any
+    /// game rule and not a stable identifier across engine versions.
+    pub fn fingerprint(&self) -> String {
+        let folded = self.state[0]
+            ^ self.state[1].rotate_left(16)
+            ^ self.state[2].rotate_left(32)
+            ^ self.state[3].rotate_left(48);
+        format!("{folded:016x}")
+    }
+}
+
+/// A debug-only snapshot of one named RNG stream: which domain it is and a
+/// fingerprint of its current state. See [`SimRng::fingerprint`] and
+/// `state::StateSummary::rng_domains`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct RngDomainSummary {
+    pub domain: String,
+    pub fingerprint: String,
+}
+
+impl RngDomainSummary {
+    pub fn new(domain: &str, rng: &SimRng) -> Self {
+        RngDomainSummary {
+            domain: domain.to_string(),
+            fingerprint: rng.fingerprint(),
+        }
+    }
 }
 
 fn fnv1a64(bytes: &[u8]) -> u64 {
@@ -129,6 +160,30 @@ mod tests {
         let mut worldgen_after = SimRng::from_seed(world_seed, "worldgen");
 
         assert_eq!(worldgen_untouched.next_u64(), worldgen_after.next_u64());
+    }
+
+    #[test]
+    fn fingerprint_is_deterministic_for_the_same_seed_and_domain() {
+        let a = SimRng::from_seed(42, "economy");
+        let b = SimRng::from_seed(42, "economy");
+        assert_eq!(a.fingerprint(), b.fingerprint());
+    }
+
+    #[test]
+    fn fingerprint_changes_after_drawing_from_the_stream() {
+        let mut rng = SimRng::from_seed(42, "economy");
+        let before = rng.fingerprint();
+        rng.next_u64();
+        let after = rng.fingerprint();
+        assert_ne!(before, after);
+    }
+
+    #[test]
+    fn domain_summary_carries_the_domain_name_and_fingerprint() {
+        let rng = SimRng::from_seed(42, "economy");
+        let summary = RngDomainSummary::new("economy", &rng);
+        assert_eq!(summary.domain, "economy");
+        assert_eq!(summary.fingerprint, rng.fingerprint());
     }
 
     #[test]
