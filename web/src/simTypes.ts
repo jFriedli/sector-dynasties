@@ -55,6 +55,7 @@ export interface City {
 export interface Country {
   id: number;
   name: string;
+  backstory: string;
   cities: City[];
 }
 

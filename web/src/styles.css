@@ -380,10 +380,17 @@ select:focus-visible {
 }
 
 .country-panel h4 {
-  margin-bottom: 10px;
+  margin-bottom: 4px;
   color: var(--color-text-muted);
   font-size: 0.95rem;
   letter-spacing: 0;
+}
+
+.country-backstory {
+  margin: 0 0 10px;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
 }
 
 .city-row {
