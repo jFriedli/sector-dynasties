@@ -62,6 +62,10 @@ npm run build:wasm   # generates web/src/wasm/, gitignored, rebuild after touchi
 npm run dev
 ```
 
+Build the static production bundle (`web/dist/`, relocatable, deployable to
+any static host including a GitHub Pages subpath) with `npm run build`; see
+`docs/DEPLOYMENT.md` for details.
+
 ## Documentation map
 
 - `AGENTS.md` — canonical rules for autonomous workers (issue claiming, worktrees,
@@ -69,6 +73,8 @@ npm run dev
 - `CONTRIBUTING.md` — local setup and PR conventions for anyone.
 - `GAME_DESIGN.md` — core design principles.
 - `docs/ARCHITECTURE.md` — module map, determinism, persistence.
+- `docs/DEPLOYMENT.md` — building and hosting the static `web/dist/` output
+  (works from a domain root or a subpath, e.g. GitHub Pages).
 - `docs/adr/` — architecture decision records.
 - `docs/ROADMAP.md` — milestone sequencing.
 - `docs/TESTING.md` — the full testing strategy and how to run each layer.
