@@ -7,6 +7,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::birth;
 use crate::dynasty::{Character, Dynasty};
 use crate::economy;
 use crate::portrait::PortraitDescriptor;
@@ -91,9 +92,12 @@ impl SimState {
         if self.clock.is_week_boundary() {
             economy::settle_week(&mut self.sector, &mut self.economy_rng);
         }
-        // Monthly population updates and yearly demographic change hook in
-        // here as their own systems; see docs/ROADMAP.md milestone
-        // "Population and culture".
+        if self.clock.is_year_boundary() {
+            birth::maybe_birth_child(self.seed, &mut self.dynasty, self.clock.year());
+        }
+        // Monthly population updates and further yearly demographic change
+        // (aging, mortality, culture) hook in here as their own systems; see
+        // docs/ROADMAP.md milestone "Population and culture".
     }
 
     pub fn step_days(&mut self, days: u32) {
@@ -285,6 +289,33 @@ mod tests {
         let after = state.summary().rng_domains[0].fingerprint.clone();
 
         assert_ne!(before, after);
+    }
+
+    #[test]
+    fn a_fertile_head_can_gain_a_child_over_enough_years() {
+        // Search a small range of seeds for one whose founder rolls a
+        // birth within a generous window, rather than depending on a
+        // single brittle seed (the founder's starting age is itself
+        // seed-dependent).
+        const YEARS: u32 = 40;
+        let seed = (0..200u64)
+            .find(|&seed| {
+                let mut probe = SimState::new(seed);
+                probe.step_days(YEARS * 360);
+                probe.dynasty.members.len() > 1
+            })
+            .expect("expected at least one seed in range to produce a birth within 40 years");
+
+        let mut a = SimState::new(seed);
+        a.step_days(YEARS * 360);
+        let mut b = SimState::new(seed);
+        b.step_days(YEARS * 360);
+
+        assert!(a.dynasty.members.len() > 1, "expected the dynasty to grow");
+        // Same seed, same step count: the birth (its tick, id, portrait,
+        // and traits) must reproduce exactly, not just "a birth happened".
+        assert_eq!(a.to_json(), b.to_json());
+        assert!(check_invariants(&a).is_empty());
     }
 
     #[test]
