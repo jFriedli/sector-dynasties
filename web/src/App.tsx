@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import init, { SimHandle } from "./wasm/sim_wasm.js";
 import { copy } from "./content/copy";
 import { SectorBrowser } from "./SectorBrowser";
+import { TimeControls } from "./TimeControls";
 import type { SimStateSnapshot, StateSummary } from "./simTypes";
 
 const DAYS_PER_YEAR = 360;
@@ -79,27 +80,13 @@ export function App() {
           </dd>
         </div>
       </dl>
-      <section className="controls" aria-label={copy.timeControlsLabel}>
-        <button className="button" onClick={advanceOneYear}>
-          {copy.advanceOneYear}
-        </button>
-        <label className="control-field">
-          {copy.advanceYearsLabel}
-          <select
-            value={yearsToAdvance}
-            onChange={(event) => setYearsToAdvance(Number(event.target.value))}
-          >
-            {YEAR_STEP_OPTIONS.map((years) => (
-              <option key={years} value={years}>
-                {years}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button className="button" onClick={advanceYears}>
-          {copy.advanceYearsButton}
-        </button>
-      </section>
+      <TimeControls
+        yearsToAdvance={yearsToAdvance}
+        yearStepOptions={YEAR_STEP_OPTIONS}
+        onYearsToAdvanceChange={setYearsToAdvance}
+        onAdvanceOneYear={advanceOneYear}
+        onAdvanceYears={advanceYears}
+      />
       <SectorBrowser sector={snapshot.sector} />
     </main>
   );
