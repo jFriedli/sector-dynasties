@@ -5,9 +5,12 @@
 //! unmodified. See docs/ARCHITECTURE.md for the module map and the reasoning
 //! behind this boundary.
 
+pub mod culture;
 pub mod dynasty;
 pub mod economy;
 pub mod invariants;
+pub mod portrait;
+pub mod presets;
 pub mod rng;
 pub mod save;
 pub mod state;

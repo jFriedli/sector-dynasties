@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::dynasty::{Character, Dynasty};
 use crate::economy;
+use crate::portrait::PortraitDescriptor;
 use crate::rng::SimRng;
 use crate::save::{load_and_migrate, SaveError};
 use crate::time::SimClock;
@@ -36,10 +37,11 @@ impl SimState {
     }
 
     /// Like [`SimState::new`], but with an explicit system count instead of
-    /// the bootstrap default. Exists so callers that need a larger sector
-    /// (currently: the `step_days` benchmark in `benches/step_days.rs`, to
-    /// compare performance at different sector sizes) don't have to
-    /// reconstruct `SimState` by hand from a private field set.
+    /// the bootstrap default. Exists so callers that need a different sector
+    /// size (the `sim-cli` seed presets, see issue #21; the `step_days`
+    /// benchmark in `benches/step_days.rs`, to compare performance at
+    /// different sector sizes) don't have to reconstruct `SimState` by hand
+    /// or duplicate the founding routine.
     pub fn new_with_system_count(seed: u64, system_count: u32) -> Self {
         let sector = generate_sector(seed, system_count);
         let mut character_rng = SimRng::from_seed(seed, "dynasty");
@@ -52,13 +54,15 @@ impl SimState {
             .and_then(|c| c.cities.first())
             .map(|c| c.id);
 
+        let founder_id = 1;
         let founder = Character {
-            id: 1,
+            id: founder_id,
             name: "Founder".to_string(),
             age_years: 28 + character_rng.next_below(20),
             alive: true,
             wealth: character_rng.range_f64(1_000.0, 10_000.0),
             home_city,
+            portrait: PortraitDescriptor::generate_for_character(seed, founder_id),
         };
 
         let dynasty = Dynasty {
@@ -216,6 +220,19 @@ mod tests {
                 supported
             } if found == SAVE_SCHEMA_VERSION + 1 && supported == SAVE_SCHEMA_VERSION
         ));
+    }
+
+    #[test]
+    fn new_with_system_count_respects_the_requested_count() {
+        let state = SimState::new_with_system_count(7, 5);
+        assert_eq!(state.sector.systems.len(), 5);
+    }
+
+    #[test]
+    fn new_matches_new_with_system_count_at_the_default() {
+        let a = SimState::new(2020);
+        let b = SimState::new_with_system_count(2020, STARTING_SYSTEM_COUNT);
+        assert_eq!(a.to_json(), b.to_json());
     }
 
     #[test]

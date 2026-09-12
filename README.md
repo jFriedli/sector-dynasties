@@ -50,6 +50,7 @@ Run the simulation headlessly:
 ```bash
 cargo test --workspace
 cargo run -p sim-cli -- run --seed 42 --years 5
+cargo run -p sim-cli -- run --preset tutorial --years 5   # named seed, see sim_core::presets
 ```
 
 Run the UI (Node 20+; this repo was bootstrapped and tested against Node 24):
