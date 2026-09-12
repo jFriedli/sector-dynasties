@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::dynasty::{Character, Dynasty, DynastyMemberSummary};
 use crate::economy;
+use crate::migration;
 use crate::mortality;
 use crate::portrait::PortraitDescriptor;
 use crate::rng::{RngDomainSummary, SimRng};
@@ -94,11 +95,12 @@ impl SimState {
         if self.clock.is_week_boundary() {
             economy::settle_week(&mut self.sector, &mut self.economy_rng);
         }
+        if self.clock.is_month_boundary() {
+            migration::run_monthly_migration(&mut self.sector);
+        }
         if self.clock.is_year_boundary() {
             mortality::age_and_roll_mortality(&mut self.dynasty, &mut self.mortality_rng);
         }
-        // Monthly population updates hook in here as their own system; see
-        // docs/ROADMAP.md milestone "Population and culture".
     }
 
     pub fn step_days(&mut self, days: u32) {
@@ -215,6 +217,33 @@ mod tests {
                 "invariant violations: {violations:?}"
             );
         }
+    }
+
+    #[test]
+    fn monthly_migration_never_changes_the_sector_wide_population_total() {
+        fn total_population(state: &SimState) -> u64 {
+            state
+                .sector
+                .systems
+                .iter()
+                .flat_map(|s| &s.planets)
+                .flat_map(|p| &p.countries)
+                .flat_map(|c| &c.cities)
+                .map(|city| city.population.size)
+                .sum()
+        }
+
+        let mut state = SimState::new(555);
+        let before = total_population(&state);
+        // Several years, so multiple month boundaries (and week/year
+        // boundaries) are crossed; only migration ever changes city
+        // population size, so the sector-wide total must stay put.
+        state.step_days(365 * 5);
+        let after = total_population(&state);
+        assert_eq!(
+            before, after,
+            "migration alone must conserve total population"
+        );
     }
 
     #[test]
