@@ -1,0 +1,179 @@
+:root {
+  color-scheme: light;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--color-text);
+  background: var(--color-page);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+
+  --color-page: #f6f7f2;
+  --color-surface: #ffffff;
+  --color-surface-muted: #e9ece1;
+  --color-text: #1d2520;
+  --color-text-muted: #53615a;
+  --color-border: #aab5ad;
+  --color-primary: #1f5f74;
+  --color-primary-hover: #174d5f;
+  --color-primary-text: #ffffff;
+  --color-accent-population: #006b58;
+  --color-accent-city: #6b4e00;
+  --color-accent-system: #7048a8;
+  --color-focus: #8f3f00;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  width: min(960px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 48px 0;
+}
+
+.app-header {
+  max-width: 680px;
+  margin-bottom: 32px;
+}
+
+.app-header h1 {
+  margin: 0 0 8px;
+  font-size: clamp(2.25rem, 4vw, 4rem);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.app-header p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 1.125rem;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin: 0 0 28px;
+}
+
+.summary-item {
+  min-height: 116px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-top: 5px solid var(--accent-color, var(--color-primary));
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.summary-item dt {
+  margin: 0 0 10px;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.summary-item dd {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.summary-item--systems {
+  --accent-color: var(--color-accent-system);
+}
+
+.summary-item--cities {
+  --accent-color: var(--color-accent-city);
+}
+
+.summary-item--population {
+  --accent-color: var(--color-accent-population);
+}
+
+.summary-item--dynasty dd {
+  font-size: 1.25rem;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+}
+
+.control-field {
+  display: grid;
+  gap: 6px;
+  min-width: 160px;
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.control-field select {
+  min-height: 44px;
+  padding: 8px 36px 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.button {
+  min-height: 44px;
+  padding: 10px 16px;
+  border: 1px solid var(--color-primary);
+  border-radius: 8px;
+  color: var(--color-primary-text);
+  background: var(--color-primary);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.button:hover {
+  border-color: var(--color-primary-hover);
+  background: var(--color-primary-hover);
+}
+
+.loading {
+  width: min(520px, calc(100% - 32px));
+  margin: 40vh auto 0;
+  color: var(--color-text);
+  font-size: 1.125rem;
+}
