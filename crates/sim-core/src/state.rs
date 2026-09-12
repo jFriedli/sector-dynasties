@@ -12,6 +12,7 @@ use crate::business::{self, Business, BusinessArchetype, FoundBusinessError};
 use crate::career::{self, Career, CareerTrack, StartCareerError};
 use crate::dynasty::{Character, Dynasty, DynastyMemberSummary};
 use crate::economy;
+use crate::favor::{self, Favor, GrantFavorError};
 use crate::migration;
 use crate::mortality;
 use crate::portrait::PortraitDescriptor;
@@ -42,6 +43,15 @@ pub struct SimState {
     /// ones are created.
     #[serde(default)]
     pub careers: Vec<Career>,
+    /// Outstanding character-to-character favors (issue #67), the first
+    /// non-wealth influence currency per `GAME_DESIGN.md`'s politics
+    /// section. Empty on a save from before favors existed. Create these
+    /// through `SimState::grant_favor` rather than pushing directly, so the
+    /// "never references a nonexistent character" invariant holds by
+    /// construction; see `favor::grant_favor`. Read by
+    /// `career::promotion_chance_with_favors`.
+    #[serde(default)]
+    pub favors: Vec<Favor>,
     economy_rng: SimRng,
     mortality_rng: SimRng,
     /// Placeholder domain on a save from before careers existed: no
@@ -110,6 +120,7 @@ impl SimState {
             dynasty,
             businesses: Vec::new(),
             careers: Vec::new(),
+            favors: Vec::new(),
             economy_rng: SimRng::from_seed(seed, "economy"),
             mortality_rng: SimRng::from_seed(seed, "dynasty:mortality"),
             career_rng: SimRng::from_seed(seed, "career"),
@@ -162,6 +173,21 @@ impl SimState {
         Ok(id)
     }
 
+    /// Record a favor: `debtor_id` now owes `creditor_id`, worth
+    /// `magnitude`. Fails without mutating `self` if either id doesn't
+    /// reference an existing dynasty member, or if the resulting favor is
+    /// otherwise invalid (see `favor::grant_favor`).
+    pub fn grant_favor(
+        &mut self,
+        creditor_id: EntityId,
+        debtor_id: EntityId,
+        magnitude: f64,
+    ) -> Result<(), GrantFavorError> {
+        let granted = favor::grant_favor(&self.dynasty, creditor_id, debtor_id, magnitude)?;
+        self.favors.push(granted);
+        Ok(())
+    }
+
     /// Advance the simulation by one day. Lower-frequency systems check the
     /// clock rather than running every call.
     pub fn step_one_day(&mut self) {
@@ -174,6 +200,7 @@ impl SimState {
                 &mut self.careers,
                 &self.sector,
                 &mut self.dynasty,
+                &self.favors,
                 &mut self.career_rng,
             );
         }
@@ -297,6 +324,63 @@ mod tests {
         a.step_days(400);
         b.step_days(400);
         assert_eq!(a.to_json(), b.to_json());
+    }
+
+    #[test]
+    fn granting_the_same_favor_on_two_same_seed_states_produces_identical_state() {
+        // Favors themselves introduce no randomness, but this pins that
+        // granting one is deterministic and doesn't disturb the RNG streams
+        // any differently on two otherwise-identical runs, the same
+        // property every other piece of `SimState` must hold.
+        fn with_a_granted_favor(seed: u64) -> SimState {
+            let mut state = SimState::new(seed);
+            let head_id = state.dynasty.head_character_id;
+            let debtor_id = head_id + 1;
+            let mut debtor = state.dynasty.head().unwrap().clone();
+            debtor.id = debtor_id;
+            state.dynasty.members.push(debtor);
+            state.grant_favor(head_id, debtor_id, 1.0).unwrap();
+            state
+        }
+
+        let mut a = with_a_granted_favor(2026);
+        let mut b = with_a_granted_favor(2026);
+        a.step_days(100);
+        b.step_days(100);
+        assert_eq!(a.to_json(), b.to_json());
+    }
+
+    #[test]
+    fn granting_a_favor_between_unknown_characters_is_refused_and_leaves_state_untouched() {
+        let mut state = SimState::new(2026);
+        let before = state.to_json();
+
+        let result = state.grant_favor(999_999, 888_888, 1.0);
+
+        assert!(result.is_err());
+        assert_eq!(state.to_json(), before);
+    }
+
+    #[test]
+    fn a_granted_favor_is_visible_to_promotion_chance_with_favors() {
+        let mut state = SimState::new(2026);
+        let head_id = state.dynasty.head_character_id;
+
+        // A second dynasty member to owe the head a favor, added directly
+        // rather than via the (seed-dependent, not-guaranteed-within-any-
+        // fixed-window) birth mechanic, since this test only needs *some*
+        // other valid character id.
+        let debtor_id = head_id + 1;
+        let mut debtor = state.dynasty.head().unwrap().clone();
+        debtor.id = debtor_id;
+        state.dynasty.members.push(debtor);
+
+        state.grant_favor(head_id, debtor_id, 5.0).unwrap();
+
+        let head = state.dynasty.head().unwrap().clone();
+        let without_favor = crate::career::promotion_chance_with_favors(&head, &[]);
+        let with_favor = crate::career::promotion_chance_with_favors(&head, &state.favors);
+        assert!(with_favor > without_favor);
     }
 
     #[test]

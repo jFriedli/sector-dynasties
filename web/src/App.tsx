@@ -4,10 +4,12 @@ import { copy } from "./content/copy";
 import { CityDetailPanel } from "./CityDetailPanel";
 import { DebugOverlay, useDebugOverlayVisible } from "./DebugOverlay";
 import { DynastyPanel } from "./DynastyPanel";
+import { GlobalSearch } from "./GlobalSearch";
 import { createIndexedDbSaveSlotStore } from "./indexedDbSaveSlotStore";
 import { SaveControls, type SaveLoadStatus } from "./SaveControls";
 import { createSaveSlot, DEFAULT_SLOT_ID, type SaveSlotStore } from "./saveSlots";
 import { SectorBrowser } from "./SectorBrowser";
+import { StateInspector } from "./StateInspector";
 import { TimeControls } from "./TimeControls";
 import { cityDetailById } from "./sectorBrowser";
 import type { LastStepPerformance } from "./simPerformance";
@@ -21,6 +23,7 @@ export function App() {
   const [summary, setSummary] = useState<StateSummary | null>(null);
   const [snapshot, setSnapshot] = useState<SimStateSnapshot | null>(null);
   const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
+  const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [lastStep, setLastStep] = useState<LastStepPerformance | null>(null);
   const [yearsToAdvance, setYearsToAdvance] = useState<number>(5);
   const debugOverlayVisible = useDebugOverlayVisible();
@@ -164,10 +167,19 @@ export function App() {
         onSave={onSave}
         onLoad={onLoad}
       />
+      <GlobalSearch
+        sector={snapshot.sector}
+        members={summary.dynasty_members}
+        onSelectCity={setSelectedCityId}
+        onSelectCharacter={setSelectedMemberId}
+      />
       {debugOverlayVisible && (
-        <DebugOverlay summary={summary} snapshot={snapshot} lastStep={lastStep} />
+        <>
+          <DebugOverlay summary={summary} snapshot={snapshot} lastStep={lastStep} />
+          <StateInspector summary={summary} snapshot={snapshot} />
+        </>
       )}
-      <DynastyPanel members={summary.dynasty_members} />
+      <DynastyPanel members={summary.dynasty_members} selectedMemberId={selectedMemberId} />
       <div className="world-panel">
         <SectorBrowser
           sector={snapshot.sector}

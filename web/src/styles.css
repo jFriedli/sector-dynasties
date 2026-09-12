@@ -189,6 +189,96 @@ select:focus-visible {
   font-size: 1.125rem;
 }
 
+.global-search {
+  position: relative;
+  margin-bottom: 32px;
+}
+
+.global-search-field {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.global-search-field input {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.global-search-field input:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.global-search-results {
+  position: absolute;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  margin: 6px 0 0;
+  padding: 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  box-shadow: 0 8px 16px rgb(0 0 0 / 0.12);
+  list-style: none;
+}
+
+.global-search-result {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 6px;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.global-search-result:hover,
+.global-search-result:focus-visible {
+  background: var(--color-surface-muted);
+  outline: none;
+}
+
+.global-search-result-kind {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.global-search-result-name {
+  font-weight: 800;
+}
+
+.global-search-result-detail {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.global-search-empty {
+  position: absolute;
+  z-index: 1;
+  width: 100%;
+  margin: 6px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+}
+
 .dynasty-panel {
   display: grid;
   gap: 16px;
@@ -225,6 +315,11 @@ select:focus-visible {
 .dynasty-member-row--deceased {
   background: var(--color-surface-muted);
   opacity: 0.75;
+}
+
+.dynasty-member-row--selected {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary);
 }
 
 .dynasty-member-identity {
@@ -539,6 +634,10 @@ select:focus-visible {
   }
 
   .city-row dl {
+    grid-template-columns: 1fr;
+  }
+
+  .global-search-result {
     grid-template-columns: 1fr;
   }
 }

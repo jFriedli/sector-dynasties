@@ -132,6 +132,37 @@ pub fn check_invariants(state: &SimState) -> Vec<InvariantViolation> {
         }
     }
 
+    for favor in &state.favors {
+        if !favor.is_valid() {
+            violations.push(InvariantViolation(format!(
+                "favor from debtor {} to creditor {} has an invalid magnitude: {}",
+                favor.debtor_id, favor.creditor_id, favor.magnitude
+            )));
+        }
+        if !state
+            .dynasty
+            .members
+            .iter()
+            .any(|c| c.id == favor.creditor_id)
+        {
+            violations.push(InvariantViolation(format!(
+                "favor creditor_id {} does not reference an existing dynasty member",
+                favor.creditor_id
+            )));
+        }
+        if !state
+            .dynasty
+            .members
+            .iter()
+            .any(|c| c.id == favor.debtor_id)
+        {
+            violations.push(InvariantViolation(format!(
+                "favor debtor_id {} does not reference an existing dynasty member",
+                favor.debtor_id
+            )));
+        }
+    }
+
     violations
 }
 
@@ -383,5 +414,66 @@ mod tests {
             .start_career(crate::career::CareerTrack::Corporate, head_id, home_city)
             .unwrap();
         assert_eq!(check_invariants(&state), Vec::new());
+    }
+
+    /// Adds a second dynasty member (a clone of the head with a new id) so
+    /// favor tests have two distinct, real character ids to work with
+    /// without depending on the seed-dependent birth mechanic.
+    fn add_second_member(state: &mut SimState) -> crate::world::EntityId {
+        let head_id = state.dynasty.head_character_id;
+        let new_id = head_id + 1;
+        let mut member = state.dynasty.head().unwrap().clone();
+        member.id = new_id;
+        state.dynasty.members.push(member);
+        new_id
+    }
+
+    #[test]
+    fn a_freshly_granted_favor_has_no_violations() {
+        let mut state = SimState::new(9);
+        let head_id = state.dynasty.head_character_id;
+        let debtor_id = add_second_member(&mut state);
+        state.grant_favor(head_id, debtor_id, 2.0).unwrap();
+        assert_eq!(check_invariants(&state), Vec::new());
+    }
+
+    #[test]
+    fn a_favor_with_an_unknown_creditor_is_caught() {
+        let mut state = SimState::new(10);
+        let debtor_id = add_second_member(&mut state);
+        state.favors.push(crate::favor::Favor {
+            creditor_id: 999_999,
+            debtor_id,
+            magnitude: 1.0,
+        });
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_favor_with_an_unknown_debtor_is_caught() {
+        let mut state = SimState::new(11);
+        let head_id = state.dynasty.head_character_id;
+        state.favors.push(crate::favor::Favor {
+            creditor_id: head_id,
+            debtor_id: 999_999,
+            magnitude: 1.0,
+        });
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_favor_with_a_non_finite_magnitude_is_caught() {
+        let mut state = SimState::new(12);
+        let head_id = state.dynasty.head_character_id;
+        let debtor_id = add_second_member(&mut state);
+        state.favors.push(crate::favor::Favor {
+            creditor_id: head_id,
+            debtor_id,
+            magnitude: f64::NAN,
+        });
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
     }
 }
