@@ -31,6 +31,23 @@ pub struct Planet {
     /// worldgen picks for this planet's cities. Intentionally a short,
     /// fixed list rather than a full resource system; see epic #4.
     pub resource_tags: Vec<ResourceTag>,
+    /// This planet's resource-abundance table: exactly one entry per
+    /// `ResourceKind::ALL`, giving how abundant that resource is here (see
+    /// `ResourceAbundance`). This is the intended hook point for epic #4's
+    /// production chains: a future production system reads this table to
+    /// decide how much of a resource a planet's industry can draw on,
+    /// rather than modeling extraction here.
+    ///
+    /// Complements, rather than replaces, `resource_tags` above: tags bias
+    /// which city specialization worldgen picks, while this table gives
+    /// numeric per-resource quantities for trade/production to consume. The
+    /// two are generated in a related way (worldgen biases a planet's
+    /// abundance rolls toward resources that match its tags, see
+    /// `worldgen::abundance_bias`) but are not required to agree exactly.
+    /// Defaults to an empty table for saves predating this field; such a
+    /// save simply has no abundance data until it's regenerated.
+    #[serde(default)]
+    pub resource_abundance: Vec<ResourceAbundance>,
     pub countries: Vec<Country>,
 }
 
@@ -42,6 +59,44 @@ pub enum ResourceTag {
     MetalRich,
     Agricultural,
     Arid,
+}
+
+/// The fixed set of tradeable resources tracked per planet. Kept
+/// deliberately short (three resources) to prove the abundance-table shape
+/// rather than model a full resource economy; see epic #4 for growing this
+/// into real production chains that consume `Planet::resource_abundance`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum ResourceKind {
+    Ore,
+    Hydrocarbons,
+    RareElements,
+}
+
+impl ResourceKind {
+    /// Every `ResourceKind` variant, in the fixed order worldgen generates
+    /// `Planet::resource_abundance` rows and invariants check them. Adding a
+    /// new resource is a matter of extending this array; every planet's
+    /// table then picks up the new row on the next `generate_sector` call.
+    pub const ALL: [ResourceKind; 3] = [
+        ResourceKind::Ore,
+        ResourceKind::Hydrocarbons,
+        ResourceKind::RareElements,
+    ];
+}
+
+/// One row of a planet's resource-abundance table: how much of `kind` this
+/// planet has, as a fraction in `[0.0, 1.0]` (0 = none, 1 = exceptionally
+/// rich). See `Planet::resource_abundance`.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct ResourceAbundance {
+    pub kind: ResourceKind,
+    pub abundance: f64,
+}
+
+impl ResourceAbundance {
+    pub fn is_valid(&self) -> bool {
+        self.abundance.is_finite() && (0.0..=1.0).contains(&self.abundance)
+    }
 }
 
 /// A country's government is described by its components rather than a
