@@ -172,6 +172,16 @@ select:focus-visible {
   background: var(--color-primary-hover);
 }
 
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.save-status {
+  margin: 0;
+  color: var(--color-text);
+}
+
 .loading {
   width: min(520px, calc(100% - 32px));
   margin: 40vh auto 0;
@@ -247,7 +257,15 @@ select:focus-visible {
   font-weight: 700;
 }
 
-.sector-browser {
+.world-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+  gap: 18px;
+  align-items: start;
+}
+
+.sector-browser,
+.city-detail-panel {
   display: grid;
   gap: 16px;
 }
@@ -358,8 +376,7 @@ select:focus-visible {
 
 .planet-panel h3,
 .country-panel h4,
-.city-row h5,
-.city-row p {
+.city-row-select span {
   margin: 0;
 }
 
@@ -398,19 +415,46 @@ select:focus-visible {
   grid-template-columns: minmax(180px, 1fr) minmax(240px, 1.2fr);
   gap: 12px;
   align-items: center;
+  width: 100%;
   padding: 12px;
   border: 1px solid var(--color-border);
   border-left: 5px solid var(--color-accent-city);
   border-radius: 8px;
+  color: var(--color-text);
   background: var(--color-surface);
 }
 
-.city-row h5 {
+.city-row:hover,
+.city-row--selected {
+  border-color: var(--color-primary);
+  border-left-color: var(--color-primary);
+  background: #f7fbfc;
+}
+
+.city-row-select {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.city-row-select:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 4px;
+}
+
+.city-row-select span:first-child {
   font-size: 1rem;
+  font-weight: 800;
   letter-spacing: 0;
 }
 
-.city-row p {
+.city-row-select span:last-child {
   color: var(--color-text-muted);
   font-size: 0.875rem;
   font-weight: 700;
@@ -421,6 +465,68 @@ select:focus-visible {
   grid-template-columns: repeat(2, minmax(96px, 1fr));
   gap: 10px;
   margin: 0;
+}
+
+.city-detail-panel {
+  position: sticky;
+  top: 16px;
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  border-top: 5px solid var(--color-primary);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.city-detail-panel h2,
+.city-detail-panel p {
+  margin: 0;
+}
+
+.city-detail-panel h2 {
+  font-size: 1.5rem;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.city-detail-panel--empty {
+  color: var(--color-text-muted);
+}
+
+.eyebrow {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 800;
+}
+
+.city-location {
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.detail-stats {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.detail-stats div {
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+}
+
+.detail-stats dt {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 800;
+}
+
+.detail-stats dd {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1.1rem;
+  font-weight: 800;
 }
 
 @media (max-width: 640px) {
@@ -434,5 +540,15 @@ select:focus-visible {
 
   .city-row dl {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .world-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .city-detail-panel {
+    position: static;
   }
 }

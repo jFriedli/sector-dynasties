@@ -7,6 +7,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::birth;
+use crate::business::{self, Business, BusinessArchetype, FoundBusinessError};
 use crate::dynasty::{Character, Dynasty, DynastyMemberSummary};
 use crate::economy;
 use crate::migration;
@@ -16,7 +18,7 @@ use crate::rng::{RngDomainSummary, SimRng};
 use crate::save::{load_and_migrate, SaveError};
 use crate::time::SimClock;
 use crate::traits;
-use crate::world::Sector;
+use crate::world::{EntityId, Sector};
 use crate::worldgen::generate_sector;
 
 pub const SAVE_SCHEMA_VERSION: u32 = 1;
@@ -29,6 +31,11 @@ pub struct SimState {
     pub clock: SimClock,
     pub sector: Sector,
     pub dynasty: Dynasty,
+    /// Every founded business, regardless of owner. Empty on a save from
+    /// before businesses existed; see `business::found_business` for how
+    /// new ones are created.
+    #[serde(default)]
+    pub businesses: Vec<Business>,
     economy_rng: SimRng,
     mortality_rng: SimRng,
 }
@@ -82,9 +89,33 @@ impl SimState {
             clock: SimClock::new(),
             sector,
             dynasty,
+            businesses: Vec::new(),
             economy_rng: SimRng::from_seed(seed, "economy"),
             mortality_rng: SimRng::from_seed(seed, "dynasty:mortality"),
         }
+    }
+
+    /// Found a new business on behalf of the dynasty head, hosted in the
+    /// city with id `host_city_id`. Fails without mutating `self` if the
+    /// city doesn't exist or its specialization doesn't match what
+    /// `archetype` requires; see `business::found_business_by_city_id`.
+    pub fn found_business(
+        &mut self,
+        name: String,
+        archetype: BusinessArchetype,
+        host_city_id: EntityId,
+    ) -> Result<EntityId, FoundBusinessError> {
+        let id = self.businesses.iter().map(|b| b.id).max().unwrap_or(0) + 1;
+        let founded = business::found_business_by_city_id(
+            &self.sector,
+            id,
+            name,
+            archetype,
+            self.dynasty.head_character_id,
+            host_city_id,
+        )?;
+        self.businesses.push(founded);
+        Ok(id)
     }
 
     /// Advance the simulation by one day. Lower-frequency systems check the
@@ -94,13 +125,24 @@ impl SimState {
 
         if self.clock.is_week_boundary() {
             economy::settle_week(&mut self.sector, &mut self.economy_rng);
+            business::settle_week(&mut self.businesses, &self.sector, &mut self.dynasty);
         }
         if self.clock.is_month_boundary() {
             migration::run_monthly_migration(&mut self.sector);
         }
         if self.clock.is_year_boundary() {
+            // Age and roll mortality before checking for a birth: this way
+            // a head who dies this year correctly has no child this year,
+            // and a newborn is never immediately aged/mortality-rolled in
+            // the same tick it's born (it would otherwise never visibly be
+            // age 0 to any external observer, since both run atomically
+            // here).
             mortality::age_and_roll_mortality(&mut self.dynasty, &mut self.mortality_rng);
+            birth::maybe_birth_child(self.seed, &mut self.dynasty, self.clock.year());
         }
+        // Further yearly demographic change (culture) hooks in here as its
+        // own system; see docs/ROADMAP.md milestone "Population and
+        // culture". Monthly migration is handled above.
     }
 
     pub fn step_days(&mut self, days: u32) {
@@ -337,6 +379,33 @@ mod tests {
         let after = state.summary().rng_domains[0].fingerprint.clone();
 
         assert_ne!(before, after);
+    }
+
+    #[test]
+    fn a_fertile_head_can_gain_a_child_over_enough_years() {
+        // Search a small range of seeds for one whose founder rolls a
+        // birth within a generous window, rather than depending on a
+        // single brittle seed (the founder's starting age is itself
+        // seed-dependent).
+        const YEARS: u32 = 40;
+        let seed = (0..200u64)
+            .find(|&seed| {
+                let mut probe = SimState::new(seed);
+                probe.step_days(YEARS * 360);
+                probe.dynasty.members.len() > 1
+            })
+            .expect("expected at least one seed in range to produce a birth within 40 years");
+
+        let mut a = SimState::new(seed);
+        a.step_days(YEARS * 360);
+        let mut b = SimState::new(seed);
+        b.step_days(YEARS * 360);
+
+        assert!(a.dynasty.members.len() > 1, "expected the dynasty to grow");
+        // Same seed, same step count: the birth (its tick, id, portrait,
+        // and traits) must reproduce exactly, not just "a birth happened".
+        assert_eq!(a.to_json(), b.to_json());
+        assert!(check_invariants(&a).is_empty());
     }
 
     #[test]

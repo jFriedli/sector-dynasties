@@ -37,6 +37,13 @@ If you find yourself writing a game rule (a formula, a threshold, a decision) in
   procedural history is backlog work under the `worldgen` label.
 - `dynasty.rs` — `Character` and `Dynasty`. The player always controls
   `Dynasty::head()`; other members are simulated but not directly controlled.
+- `birth.rs` — `maybe_birth_child`, a yearly, deliberately simple fertility check
+  that can add a new `Character` as the dynasty head's child (age 0, head's
+  `home_city`). Stateless like `portrait.rs`/`traits.rs`: a pure function of the
+  world seed, the head's id, and the year, from its own `SimRng` domain
+  (`"dynasty:birth:<head_id>:<year>"`), so nothing new needs to persist on
+  `SimState`. See issue #25; richer relationship/marriage modeling is #3-epic
+  territory (#49/#23).
 - `portrait.rs` — `PortraitDescriptor`, a character's appearance as plain
   categorical/numeric traits (skin tone, hair, eyes, build, height), attached
   to `Character`. Deliberately has no image format, file path, or network
@@ -55,6 +62,14 @@ If you find yourself writing a game rule (a formula, a threshold, a decision) in
 - `economy.rs` — weekly settlement over cities. Intentionally minimal (no goods,
   production chains, or trade routes yet); it exists to prove the tick/frequency
   architecture. Real production chains are `economy`/`trade` backlog work.
+- `business.rs` — the first real, founded/owned `Business` type: one archetype
+  (`Mining`), founding rules (must match the host city's specialization), and a
+  weekly settlement that pays net income into the owning character's wealth and
+  the business's own equity. Net income already reads the host country's
+  `Country::union_power` through `labor_cost_fraction`, so a second archetype
+  (logistics, finance, ...) should add its own match arms rather than
+  reinventing labor-cost sensitivity. Deliberately narrow: no shares,
+  employees, facilities, mergers, or bankruptcy yet (epic #6).
 - `invariants.rs` — `check_invariants(&SimState)`, cheap enough to run every tick in
   debug/test builds. A violation is always a bug, never a game event. Extend this
   whenever you add state that has a validity rule (a range, a non-NaN requirement, a

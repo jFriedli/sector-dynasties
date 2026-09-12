@@ -37,6 +37,7 @@ export interface StateSummary {
 }
 
 export type CitySpecialization = "Mining" | "Manufacturing" | "Finance" | "Research" | "Logistics";
+export type ResourceTag = "MetalRich" | "Agricultural" | "Arid";
 
 export interface PopulationGroup {
   size: number;
@@ -50,18 +51,22 @@ export interface City {
   specialization: CitySpecialization;
   population: PopulationGroup;
   treasury: number;
+  recent_output_index: number;
 }
 
 export interface Country {
   id: number;
   name: string;
   backstory: string;
+  social_mobility: number;
+  union_power: number;
   cities: City[];
 }
 
 export interface Planet {
   id: number;
   name: string;
+  resource_tags: ResourceTag[];
   countries: Country[];
 }
 

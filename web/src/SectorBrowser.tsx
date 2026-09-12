@@ -10,9 +10,11 @@ const creditFormat = new Intl.NumberFormat("en-US", {
 
 interface SectorBrowserProps {
   sector: Sector;
+  selectedCityId: number | null;
+  onSelectCity: (cityId: number) => void;
 }
 
-export function SectorBrowser({ sector }: SectorBrowserProps) {
+export function SectorBrowser({ sector, selectedCityId, onSelectCity }: SectorBrowserProps) {
   const cityRows = cityRowsFromSector(sector);
 
   return (
@@ -51,24 +53,36 @@ export function SectorBrowser({ sector }: SectorBrowserProps) {
                         <h4>{country.name}</h4>
                         <p className="country-backstory">{country.backstory}</p>
                         <div className="city-list">
-                          {country.cities.map((city) => (
-                            <article className="city-row" key={city.id}>
-                              <div>
-                                <h5>{city.name}</h5>
-                                <p>{specializationLabel(city.specialization)}</p>
-                              </div>
-                              <dl>
-                                <div>
-                                  <dt>{copy.cityPopulationLabel}</dt>
-                                  <dd>{numberFormat.format(city.population.size)}</dd>
-                                </div>
-                                <div>
-                                  <dt>{copy.cityTreasuryLabel}</dt>
-                                  <dd>{creditFormat.format(city.treasury)}</dd>
-                                </div>
-                              </dl>
-                            </article>
-                          ))}
+                          {country.cities.map((city) => {
+                            const isSelected = selectedCityId === city.id;
+
+                            return (
+                              <article
+                                className={isSelected ? "city-row city-row--selected" : "city-row"}
+                                key={city.id}
+                              >
+                                <button
+                                  className="city-row-select"
+                                  type="button"
+                                  aria-pressed={isSelected}
+                                  onClick={() => onSelectCity(city.id)}
+                                >
+                                  <span>{city.name}</span>
+                                  <span>{specializationLabel(city.specialization)}</span>
+                                </button>
+                                <dl>
+                                  <div>
+                                    <dt>{copy.cityPopulationLabel}</dt>
+                                    <dd>{numberFormat.format(city.population.size)}</dd>
+                                  </div>
+                                  <div>
+                                    <dt>{copy.cityTreasuryLabel}</dt>
+                                    <dd>{creditFormat.format(city.treasury)}</dd>
+                                  </div>
+                                </dl>
+                              </article>
+                            );
+                          })}
                         </div>
                       </section>
                     ))}
