@@ -5,6 +5,7 @@
 //! act on. See issues under the `worldgen` label for growing this into
 //! real procedural history.
 
+use crate::history;
 use crate::rng::SimRng;
 use crate::world::{
     City, CitySpecialization, Country, GovernmentProfile, Planet, PopulationGroup, ResourceTag,
@@ -131,6 +132,7 @@ fn generate_resource_tags(rng: &mut SimRng) -> Vec<ResourceTag> {
 fn generate_country(rng: &mut SimRng, next_id: &mut u32, planet_tags: &[ResourceTag]) -> Country {
     let id = take_id(next_id);
     let name = name_for(COUNTRY_NAMES, rng.pick_index(COUNTRY_NAMES.len()), id);
+    let backstory = history::generate_backstory(rng, &name);
     let government = GovernmentProfile {
         federalism: rng.next_f64(),
         franchise: rng.next_f64(),
@@ -147,6 +149,7 @@ fn generate_country(rng: &mut SimRng, next_id: &mut u32, planet_tags: &[Resource
         id,
         name,
         government,
+        backstory,
         cities,
     }
 }
@@ -302,5 +305,44 @@ mod tests {
             .flat_map(|s| s.planets.iter().map(|p| p.resource_tags.clone()))
             .collect();
         assert_eq!(tags_a, tags_b);
+    }
+
+    fn country_backstories(sector: &Sector) -> Vec<String> {
+        sector
+            .systems
+            .iter()
+            .flat_map(|s| s.planets.iter())
+            .flat_map(|p| p.countries.iter())
+            .map(|c| c.backstory.clone())
+            .collect()
+    }
+
+    #[test]
+    fn same_seed_produces_the_same_country_backstories() {
+        let a = generate_sector(4040, 3);
+        let b = generate_sector(4040, 3);
+        assert_eq!(country_backstories(&a), country_backstories(&b));
+    }
+
+    #[test]
+    fn every_country_gets_a_non_empty_backstory_naming_itself() {
+        let sector = generate_sector(4141, 4);
+        for system in &sector.systems {
+            for planet in &system.planets {
+                for country in &planet.countries {
+                    assert!(
+                        !country.backstory.is_empty(),
+                        "country {} has an empty backstory",
+                        country.name
+                    );
+                    assert!(
+                        country.backstory.starts_with(&country.name),
+                        "expected {}'s backstory to start with its own name, got: {}",
+                        country.name,
+                        country.backstory
+                    );
+                }
+            }
+        }
     }
 }
