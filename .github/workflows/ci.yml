@@ -25,6 +25,22 @@ jobs:
       - name: wasm build check
         run: cargo build -p sim-wasm --target wasm32-unknown-unknown --release
 
+  windows:
+    name: Windows (build, test, wasm target)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: build
+        run: cargo build --workspace
+      - name: test
+        run: cargo test --workspace
+      - name: wasm build check
+        run: cargo build -p sim-wasm --target wasm32-unknown-unknown --release
+
   frontend:
     name: Frontend (lint, typecheck, test, build)
     runs-on: ubuntu-latest

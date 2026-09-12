@@ -9,9 +9,11 @@ pub mod dynasty;
 pub mod economy;
 pub mod invariants;
 pub mod rng;
+pub mod save;
 pub mod state;
 pub mod time;
 pub mod world;
 pub mod worldgen;
 
+pub use save::SaveError;
 pub use state::{SimState, StateSummary};

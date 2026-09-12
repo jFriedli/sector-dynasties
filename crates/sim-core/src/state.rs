@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use crate::dynasty::{Character, Dynasty};
 use crate::economy;
 use crate::rng::SimRng;
+use crate::save::{load_and_migrate, SaveError};
 use crate::time::SimClock;
 use crate::world::Sector;
 use crate::worldgen::generate_sector;
@@ -120,8 +121,14 @@ impl SimState {
         serde_json::to_string(self).expect("SimState always serializes")
     }
 
-    pub fn from_json(json: &str) -> Result<Self, serde_json::Error> {
-        serde_json::from_str(json)
+    /// Load a save, migrating it up to `SAVE_SCHEMA_VERSION` first if it's
+    /// an older but known version. Rejects malformed JSON, saves missing
+    /// required fields, and saves from an unsupported future version with a
+    /// distinct `SaveError` rather than ever returning a corrupted
+    /// `SimState`. See `crate::save`.
+    pub fn from_json(json: &str) -> Result<Self, SaveError> {
+        let value = load_and_migrate(json)?;
+        serde_json::from_value(value).map_err(|e| SaveError::Corrupt(e.to_string()))
     }
 }
 
@@ -172,6 +179,34 @@ mod tests {
         let json = state.to_json();
         let restored = SimState::from_json(&json).unwrap();
         assert_eq!(json, restored.to_json());
+    }
+
+    #[test]
+    fn loading_malformed_json_is_rejected_as_corrupt_not_a_panic() {
+        let err = SimState::from_json("not json").unwrap_err();
+        assert!(matches!(err, SaveError::Corrupt(_)));
+    }
+
+    #[test]
+    fn loading_a_save_missing_schema_version_is_rejected_as_corrupt() {
+        let err = SimState::from_json(r#"{"seed": 1}"#).unwrap_err();
+        assert!(matches!(err, SaveError::Corrupt(_)));
+    }
+
+    #[test]
+    fn loading_an_unsupported_future_version_is_rejected() {
+        let mut value: serde_json::Value =
+            serde_json::from_str(&SimState::new(1).to_json()).unwrap();
+        value["schema_version"] = serde_json::Value::from(SAVE_SCHEMA_VERSION + 1);
+
+        let err = SimState::from_json(&value.to_string()).unwrap_err();
+        assert!(matches!(
+            err,
+            SaveError::UnsupportedFutureVersion {
+                found,
+                supported
+            } if found == SAVE_SCHEMA_VERSION + 1 && supported == SAVE_SCHEMA_VERSION
+        ));
     }
 
     #[test]

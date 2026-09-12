@@ -43,6 +43,8 @@ to change one, say so explicitly in the PR description:
   eventually want a field here; add narrowly and justify it)
 - `crates/sim-core/src/invariants.rs` (shared invariant list: additive changes are
   usually fine, but check for merge conflicts with other in-flight PRs)
+- `crates/sim-core/src/save.rs` (save format migrations: additive per schema bump,
+  but only touch this when you're actually bumping `SAVE_SCHEMA_VERSION`)
 - `crates/sim-core/src/lib.rs`, `Cargo.toml` files (module/dependency wiring)
   and `web/package.json` (frontend dependency wiring)
 - `.github/workflows/ci.yml`, `AGENTS.md`, `CONTRIBUTING.md` (process files: change
