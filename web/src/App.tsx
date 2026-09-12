@@ -8,6 +8,7 @@ import { createIndexedDbSaveSlotStore } from "./indexedDbSaveSlotStore";
 import { SaveControls, type SaveLoadStatus } from "./SaveControls";
 import { createSaveSlot, DEFAULT_SLOT_ID, type SaveSlotStore } from "./saveSlots";
 import { SectorBrowser } from "./SectorBrowser";
+import { StateInspector } from "./StateInspector";
 import { TimeControls } from "./TimeControls";
 import { cityDetailById } from "./sectorBrowser";
 import type { LastStepPerformance } from "./simPerformance";
@@ -165,7 +166,10 @@ export function App() {
         onLoad={onLoad}
       />
       {debugOverlayVisible && (
-        <DebugOverlay summary={summary} snapshot={snapshot} lastStep={lastStep} />
+        <>
+          <DebugOverlay summary={summary} snapshot={snapshot} lastStep={lastStep} />
+          <StateInspector summary={summary} snapshot={snapshot} />
+        </>
       )}
       <DynastyPanel members={summary.dynasty_members} />
       <div className="world-panel">
