@@ -8,6 +8,7 @@
 pub mod dynasty;
 pub mod economy;
 pub mod invariants;
+pub mod portrait;
 pub mod presets;
 pub mod rng;
 pub mod save;
