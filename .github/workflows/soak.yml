@@ -1,0 +1,17 @@
+name: Soak test
+
+# Long-running determinism/invariant soak test (200 simulated years across four
+# seeds). Deliberately not run on every push; see docs/TESTING.md.
+on:
+  schedule:
+    - cron: "0 6 * * 1" # weekly, Monday 06:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  soak:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --test soak -- --ignored

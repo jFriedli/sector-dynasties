@@ -1,0 +1,114 @@
+//! The Sector -> StarSystem -> Planet -> Country -> City hierarchy.
+//!
+//! This is deliberately shallow for the bootstrap slice: enough structure
+//! to prove the hierarchy and let population/economy systems attach to a
+//! `City`, without modeling orbits, borders, or geography in any depth.
+//! See docs/ARCHITECTURE.md for the intended growth path.
+
+use serde::{Deserialize, Serialize};
+
+pub type EntityId = u32;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Sector {
+    pub seed: u64,
+    pub name: String,
+    pub systems: Vec<StarSystem>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StarSystem {
+    pub id: EntityId,
+    pub name: String,
+    pub planets: Vec<Planet>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Planet {
+    pub id: EntityId,
+    pub name: String,
+    pub countries: Vec<Country>,
+}
+
+/// A country's government is described by its components rather than a
+/// single enum, per the architecture goal of building government out of
+/// institutions and rules. The bootstrap slice only models a couple of
+/// dimensions; more can be added without breaking existing data since each
+/// field is independent.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GovernmentProfile {
+    /// 0.0 = fully centralized authority, 1.0 = fully distributed/federal.
+    pub federalism: f64,
+    /// 0.0 = no popular franchise, 1.0 = universal suffrage.
+    pub franchise: f64,
+    /// 0.0 = command economy, 1.0 = laissez-faire.
+    pub economic_liberalism: f64,
+    /// 0.0 = state/press fully controlled, 1.0 = fully free press.
+    pub press_freedom: f64,
+}
+
+impl GovernmentProfile {
+    /// A short human-readable label derived from the component values.
+    /// This is a placeholder classifier for the bootstrap slice, not a
+    /// final taxonomy.
+    pub fn display_name(&self) -> String {
+        let structure = if self.federalism > 0.5 {
+            "Federal"
+        } else {
+            "Centralized"
+        };
+        let economy = if self.economic_liberalism > 0.5 {
+            "Market"
+        } else {
+            "Planned"
+        };
+        format!("{structure} {economy} Republic")
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Country {
+    pub id: EntityId,
+    pub name: String,
+    pub government: GovernmentProfile,
+    pub cities: Vec<City>,
+}
+
+/// Broad economic specialization. A city may lean into one or more of
+/// these; the bootstrap slice keeps it to a single primary specialization.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CitySpecialization {
+    Mining,
+    Manufacturing,
+    Finance,
+    Research,
+    Logistics,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct City {
+    pub id: EntityId,
+    pub name: String,
+    pub specialization: CitySpecialization,
+    pub population: PopulationGroup,
+    /// Accumulated economic output, in abstract credits. Not tied to any
+    /// per-unit cargo simulation; see docs/ARCHITECTURE.md Economy section.
+    pub treasury: f64,
+}
+
+/// Most inhabitants are represented statistically, never as individual
+/// characters. See docs/GAME_DESIGN.md.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PopulationGroup {
+    pub size: u64,
+    pub average_wealth: f64,
+    pub unemployment_rate: f64,
+}
+
+impl PopulationGroup {
+    pub fn is_valid(&self) -> bool {
+        self.average_wealth.is_finite()
+            && self.average_wealth >= 0.0
+            && (0.0..=1.0).contains(&self.unemployment_rate)
+    }
+}

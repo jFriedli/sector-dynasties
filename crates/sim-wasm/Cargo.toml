@@ -1,0 +1,17 @@
+[package]
+name = "sim-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "wasm-bindgen bridge exposing the simulation core to the TypeScript/React frontend."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+sim-core = { path = "../sim-core" }
+wasm-bindgen = "0.2"
+serde_json = { version = "1", features = ["float_roundtrip"] }
+
+[dev-dependencies]

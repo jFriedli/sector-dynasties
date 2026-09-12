@@ -1,0 +1,16 @@
+[package]
+name = "sim-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Deterministic, headless simulation core for Sector Dynasties. No I/O, no rendering."
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+# float_roundtrip: without it, serde_json's default float parser can be off
+# by one ULP on reparse (verified against 1.0.151), which silently breaks
+# exact save/load round trips. See docs/adr/0001-simulation-core-stack.md.
+serde_json = { version = "1", features = ["float_roundtrip"] }
+
+[dev-dependencies]

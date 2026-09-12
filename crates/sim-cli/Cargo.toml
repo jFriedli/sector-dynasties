@@ -1,0 +1,15 @@
+[package]
+name = "sim-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Headless runner for the Sector Dynasties simulation core: run years of simulation without a UI."
+
+[[bin]]
+name = "sim-cli"
+path = "src/main.rs"
+
+[dependencies]
+sim-core = { path = "../sim-core" }
+serde_json = { version = "1", features = ["float_roundtrip"] }
