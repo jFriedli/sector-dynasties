@@ -4,6 +4,7 @@
 //!   sim-cli run --seed <u64> [--years <u32>] [--json] [--save <path>]
 //!   sim-cli run --preset <name> [--years <u32>] [--json] [--save <path>]
 //!   sim-cli load --path <path> [--years <u32>] [--json]
+//!   sim-cli diff --a <path> --b <path> [--json]
 //!
 //! `run` starts a fresh game from a seed; `--save` writes the resulting
 //! state to a plain JSON file. `--preset <name>` is a memorable alternative
@@ -14,7 +15,11 @@
 //! WASM bridge/UI, since they share the same JSON shape) and advances it
 //! further. Exists so a bug report can be reduced to "seed X, N years, see
 //! summary/state Y" - or "this exact save file, N more years" - without
-//! touching the UI. See docs/ARCHITECTURE.md's persistence section.
+//! touching the UI. `diff` compares two saved SimState JSON files (e.g.
+//! before/after a suspicious change) and prints only the fields that
+//! actually differ, instead of asking a developer to eyeball two huge JSON
+//! blobs; see `diff.rs` and issue #96. See docs/ARCHITECTURE.md's
+//! persistence section.
 
 use std::env;
 use std::fs;
@@ -22,6 +27,8 @@ use std::process::ExitCode;
 
 use sim_core::presets;
 use sim_core::SimState;
+
+mod diff;
 
 #[derive(Debug)]
 struct RunArgs {
@@ -35,6 +42,13 @@ struct RunArgs {
 struct LoadArgs {
     path: String,
     years: u32,
+    json: bool,
+}
+
+#[derive(Debug)]
+struct DiffArgs {
+    a_path: String,
+    b_path: String,
     json: bool,
 }
 
@@ -139,6 +153,35 @@ fn parse_load_args(raw: &[String]) -> Result<LoadArgs, String> {
     })
 }
 
+fn parse_diff_args(raw: &[String]) -> Result<DiffArgs, String> {
+    let mut a_path = None;
+    let mut b_path = None;
+    let mut json = false;
+
+    let mut i = 0;
+    while i < raw.len() {
+        match raw[i].as_str() {
+            "--a" => {
+                i += 1;
+                a_path = Some(raw.get(i).ok_or("--a requires a path")?.clone());
+            }
+            "--b" => {
+                i += 1;
+                b_path = Some(raw.get(i).ok_or("--b requires a path")?.clone());
+            }
+            "--json" => json = true,
+            other => return Err(format!("unrecognized argument: {other}")),
+        }
+        i += 1;
+    }
+
+    Ok(DiffArgs {
+        a_path: a_path.ok_or("diff requires --a <file>")?,
+        b_path: b_path.ok_or("diff requires --b <file>")?,
+        json,
+    })
+}
+
 fn summarize(state: &SimState) -> String {
     let violations = sim_core::invariants::check_invariants(state);
     if !violations.is_empty() {
@@ -194,14 +237,33 @@ fn load(args: &LoadArgs) -> Result<String, String> {
     })
 }
 
+fn diff(args: &DiffArgs) -> Result<String, String> {
+    let a_text = fs::read_to_string(&args.a_path)
+        .map_err(|e| format!("failed to read {}: {e}", args.a_path))?;
+    let b_text = fs::read_to_string(&args.b_path)
+        .map_err(|e| format!("failed to read {}: {e}", args.b_path))?;
+    let a: serde_json::Value = serde_json::from_str(&a_text)
+        .map_err(|e| format!("{} is not valid JSON: {e}", args.a_path))?;
+    let b: serde_json::Value = serde_json::from_str(&b_text)
+        .map_err(|e| format!("{} is not valid JSON: {e}", args.b_path))?;
+
+    let entries = diff::diff_json(&a, &b);
+    Ok(if args.json {
+        diff::format_json(&entries)
+    } else {
+        diff::format_text(&entries)
+    })
+}
+
 fn main() -> ExitCode {
     let raw: Vec<String> = env::args().skip(1).collect();
 
     let result = match raw.first().map(String::as_str) {
         Some("run") => parse_run_args(&raw[1..]).and_then(|a| run(&a)),
         Some("load") => parse_load_args(&raw[1..]).and_then(|a| load(&a)),
+        Some("diff") => parse_diff_args(&raw[1..]).and_then(|a| diff(&a)),
         _ => Err(format!(
-            "usage: sim-cli run --seed <u64> [--years <u32>] [--json] [--save <path>]\n       sim-cli run --preset <name> [--years <u32>] [--json] [--save <path>]\n       sim-cli load --path <path> [--years <u32>] [--json]\nknown presets: {}",
+            "usage: sim-cli run --seed <u64> [--years <u32>] [--json] [--save <path>]\n       sim-cli run --preset <name> [--years <u32>] [--json] [--save <path>]\n       sim-cli load --path <path> [--years <u32>] [--json]\n       sim-cli diff --a <path> --b <path> [--json]\nknown presets: {}",
             presets::names().join(", ")
         )),
     };
@@ -366,6 +428,83 @@ mod tests {
         });
 
         std::fs::remove_file(&path_str).ok();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn parses_diff_flags() {
+        let raw = vec![
+            "--a".to_string(),
+            "before.json".to_string(),
+            "--b".to_string(),
+            "after.json".to_string(),
+            "--json".to_string(),
+        ];
+        let args = parse_diff_args(&raw).unwrap();
+        assert_eq!(args.a_path, "before.json");
+        assert_eq!(args.b_path, "after.json");
+        assert!(args.json);
+    }
+
+    #[test]
+    fn diff_requires_both_paths() {
+        let err = parse_diff_args(&["--a".to_string(), "before.json".to_string()]).unwrap_err();
+        assert!(err.contains("--b"));
+    }
+
+    #[test]
+    fn diff_catches_an_intentional_change_between_two_states() {
+        let path_a =
+            std::env::temp_dir().join(format!("sim-cli-diff-a-{}.json", std::process::id()));
+        let path_b =
+            std::env::temp_dir().join(format!("sim-cli-diff-b-{}.json", std::process::id()));
+
+        let state_a = SimState::new(1);
+        let mut state_b = SimState::new(1);
+        state_b.step_days(360);
+
+        std::fs::write(&path_a, state_a.to_json()).unwrap();
+        std::fs::write(&path_b, state_b.to_json()).unwrap();
+
+        let output = diff(&DiffArgs {
+            a_path: path_a.to_str().unwrap().to_string(),
+            b_path: path_b.to_str().unwrap().to_string(),
+            json: false,
+        })
+        .unwrap();
+
+        std::fs::remove_file(&path_a).ok();
+        std::fs::remove_file(&path_b).ok();
+
+        assert!(output.contains("clock.tick: 0 -> 360"));
+        assert!(!output.contains("no differences found"));
+    }
+
+    #[test]
+    fn diffing_identical_states_reports_no_differences() {
+        let state = SimState::new(2);
+        let path =
+            std::env::temp_dir().join(format!("sim-cli-diff-same-{}.json", std::process::id()));
+        std::fs::write(&path, state.to_json()).unwrap();
+
+        let output = diff(&DiffArgs {
+            a_path: path.to_str().unwrap().to_string(),
+            b_path: path.to_str().unwrap().to_string(),
+            json: false,
+        })
+        .unwrap();
+
+        std::fs::remove_file(&path).ok();
+        assert_eq!(output, "no differences found");
+    }
+
+    #[test]
+    fn diffing_a_missing_file_is_a_clean_error_not_a_panic() {
+        let result = diff(&DiffArgs {
+            a_path: "/nonexistent/does-not-exist-a.json".to_string(),
+            b_path: "/nonexistent/does-not-exist-b.json".to_string(),
+            json: false,
+        });
         assert!(result.is_err());
     }
 }
