@@ -28,6 +28,13 @@
 - **A soak test** (`crates/sim-core/tests/soak.rs`): 200 simulated years across four
   seeds, checking invariants yearly. Marked `#[ignore]` so it does not run in the
   default fast pass; run it explicitly or from a scheduled workflow.
+- **A criterion benchmark** (`crates/sim-core/benches/step_days.rs`): measures
+  `SimState::step_days` over a simulated year at the bootstrap sector size and a
+  larger generated one, giving future changes a repeatable number to compare
+  against. Run with `cargo bench -p sim-core`. The `[[bench]]` entry in
+  `crates/sim-core/Cargo.toml` sets `test = false` specifically so `cargo test`
+  never runs it; benchmarks are slow and their absolute numbers are noisy across
+  machines, so they're for local, on-demand comparison only, not CI.
 - **Frontend unit tests** (`web/tests/*.test.ts`, Vitest): currently the copy lint.
   Add more here as pure TS logic accumulates outside components.
 - **The copy lint** (`web/tests/copy-lint.test.ts`): scans every exported string
@@ -68,8 +75,9 @@ built speculatively during bootstrap:
   but there has only ever been one real schema version so far. Add a real migration
   step and a fixture from the actual old shape the first time `SAVE_SCHEMA_VERSION`
   bumps.
-- Performance/benchmark tests: no population-scale stress yet; add
-  `criterion`-based benchmarks once a system's performance actually matters.
+- Broader performance/benchmark coverage: `step_days` has a baseline now (see
+  above); add more `criterion` benchmarks for other systems once their
+  performance actually matters.
 - Visual regression tests and fuzzing: valuable later, not before there's UI or
   content parsers worth protecting.
 

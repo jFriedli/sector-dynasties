@@ -36,10 +36,12 @@ impl SimState {
         Self::new_with_system_count(seed, STARTING_SYSTEM_COUNT)
     }
 
-    /// Like `new`, but with an explicit system count instead of the default.
-    /// Exists so callers (namely the `sim-cli` seed presets, see issue #21)
-    /// can vary sector size without a duplicated founding routine drifting
-    /// out of sync with `new`.
+    /// Like [`SimState::new`], but with an explicit system count instead of
+    /// the bootstrap default. Exists so callers that need a different sector
+    /// size (the `sim-cli` seed presets, see issue #21; the `step_days`
+    /// benchmark in `benches/step_days.rs`, to compare performance at
+    /// different sector sizes) don't have to reconstruct `SimState` by hand
+    /// or duplicate the founding routine.
     pub fn new_with_system_count(seed: u64, system_count: u32) -> Self {
         let sector = generate_sector(seed, system_count);
         let mut character_rng = SimRng::from_seed(seed, "dynasty");
