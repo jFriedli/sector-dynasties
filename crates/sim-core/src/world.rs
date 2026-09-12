@@ -30,6 +30,19 @@ impl Sector {
             .flat_map(|c| &c.cities)
             .find(|city| city.id == id)
     }
+
+    /// Look up the country that hosts the city with the given id. Returns
+    /// `None` for a stale or unknown city id, for the same reason as
+    /// [`Sector::find_city`]: callers holding only an `EntityId` (e.g.
+    /// `crate::business` reading a host country's `union_power`) must
+    /// treat a dangling reference as recoverable, not a crash.
+    pub fn find_country_for_city(&self, city_id: EntityId) -> Option<&Country> {
+        self.systems
+            .iter()
+            .flat_map(|s| &s.planets)
+            .flat_map(|p| &p.countries)
+            .find(|country| country.cities.iter().any(|city| city.id == city_id))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -172,6 +185,15 @@ pub struct Country {
     /// parameter.
     #[serde(default = "default_social_mobility")]
     pub social_mobility: f64,
+    /// How much organized labor can raise a business's labor costs in this
+    /// country. `0.0` means no organized labor (labor costs sit at a
+    /// business archetype's baseline); `1.0` means fully organized, strong
+    /// union power (labor costs rise toward their archetype-specific
+    /// ceiling). See `crate::business::labor_cost_fraction`, the
+    /// calculation this drives, for how it turns into a measurable
+    /// difference in a business's net income.
+    #[serde(default = "default_union_power")]
+    pub union_power: f64,
     pub cities: Vec<City>,
 }
 
@@ -179,6 +201,13 @@ pub struct Country {
 /// the midpoint, neither rigid nor fluid, so an old save doesn't suddenly
 /// snap to either extreme.
 fn default_social_mobility() -> f64 {
+    0.5
+}
+
+/// Default for `Country::union_power` on saves predating this field: the
+/// midpoint, neither unorganized nor fully organized, so an old save
+/// doesn't suddenly snap to either extreme.
+fn default_union_power() -> f64 {
     0.5
 }
 

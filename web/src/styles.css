@@ -172,6 +172,16 @@ select:focus-visible {
   background: var(--color-primary-hover);
 }
 
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.save-status {
+  margin: 0;
+  color: var(--color-text);
+}
+
 .loading {
   width: min(520px, calc(100% - 32px));
   margin: 40vh auto 0;

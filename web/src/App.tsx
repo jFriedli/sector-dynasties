@@ -4,6 +4,9 @@ import { copy } from "./content/copy";
 import { CityDetailPanel } from "./CityDetailPanel";
 import { DebugOverlay, useDebugOverlayVisible } from "./DebugOverlay";
 import { DynastyPanel } from "./DynastyPanel";
+import { createIndexedDbSaveSlotStore } from "./indexedDbSaveSlotStore";
+import { SaveControls, type SaveLoadStatus } from "./SaveControls";
+import { createSaveSlot, DEFAULT_SLOT_ID, type SaveSlotStore } from "./saveSlots";
 import { SectorBrowser } from "./SectorBrowser";
 import { TimeControls } from "./TimeControls";
 import { cityDetailById } from "./sectorBrowser";
@@ -21,6 +24,9 @@ export function App() {
   const [lastStep, setLastStep] = useState<LastStepPerformance | null>(null);
   const [yearsToAdvance, setYearsToAdvance] = useState<number>(5);
   const debugOverlayVisible = useDebugOverlayVisible();
+  const [saveStore] = useState<SaveSlotStore>(() => createIndexedDbSaveSlotStore());
+  const [hasSavedSlot, setHasSavedSlot] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveLoadStatus>({ kind: "idle" });
 
   useEffect(() => {
     let cancelled = false;
@@ -39,6 +45,16 @@ export function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    saveStore.get(DEFAULT_SLOT_ID).then((slot) => {
+      if (!cancelled && slot) setHasSavedSlot(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [saveStore]);
 
   const advanceOneYear = useCallback(() => {
     if (!handle) return;
@@ -62,6 +78,44 @@ export function App() {
     setSummary(JSON.parse(handle.summary_json()) as StateSummary);
     setSnapshot(JSON.parse(handle.to_json()) as SimStateSnapshot);
   }, [handle, yearsToAdvance]);
+
+  const onSave = useCallback(() => {
+    if (!handle) return;
+    const slot = createSaveSlot(DEFAULT_SLOT_ID, copy.defaultSaveSlotName, handle.to_json());
+    saveStore
+      .put(slot)
+      .then(() => {
+        setHasSavedSlot(true);
+        setSaveStatus({ kind: "saved", savedAt: slot.savedAt });
+      })
+      .catch((error: unknown) => {
+        setSaveStatus({ kind: "error", message: String(error) });
+      });
+  }, [handle, saveStore]);
+
+  const onLoad = useCallback(() => {
+    saveStore
+      .get(DEFAULT_SLOT_ID)
+      .then((slot) => {
+        if (!slot) return;
+        // Go through the same `fromJson`/`to_json` path a fresh load
+        // would use so a loaded slot continues the same simulation future
+        // as never having saved, see state.rs's round-trip test.
+        const nextHandle = SimHandle.fromJson(slot.stateJson);
+        handle?.free();
+        setHandle(nextHandle);
+        setSummary(JSON.parse(nextHandle.summary_json()) as StateSummary);
+        const nextSnapshot = JSON.parse(nextHandle.to_json()) as SimStateSnapshot;
+        setSnapshot(nextSnapshot);
+        setSelectedCityId(
+          nextSnapshot.sector.systems[0]?.planets[0]?.countries[0]?.cities[0]?.id ?? null,
+        );
+        setSaveStatus({ kind: "loaded", savedAt: slot.savedAt });
+      })
+      .catch((error: unknown) => {
+        setSaveStatus({ kind: "error", message: String(error) });
+      });
+  }, [handle, saveStore]);
 
   if (!summary || !snapshot) {
     return <p className="loading">{copy.loading}</p>;
@@ -103,6 +157,12 @@ export function App() {
         onYearsToAdvanceChange={setYearsToAdvance}
         onAdvanceOneYear={advanceOneYear}
         onAdvanceYears={advanceYears}
+      />
+      <SaveControls
+        hasSavedSlot={hasSavedSlot}
+        status={saveStatus}
+        onSave={onSave}
+        onLoad={onLoad}
       />
       {debugOverlayVisible && (
         <DebugOverlay summary={summary} snapshot={snapshot} lastStep={lastStep} />

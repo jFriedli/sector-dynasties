@@ -6,11 +6,20 @@
 //! epic #6 and `GAME_DESIGN.md`'s economy section): one archetype, no
 //! shares, no employees, no facilities, no mergers or bankruptcy. Per
 //! `GAME_DESIGN.md`, different business archetypes should carry genuinely
-//! different pressures rather than being a generic production building with
-//! a different name, so [`BusinessArchetype`] carries its own required host
-//! city specialization, revenue rate, and running cost rather than sharing
-//! one formula; adding a second archetype (logistics, finance, ...) means
-//! adding a match arm to each, not touching the settlement loop.
+//! different pressures rather than being a generic production building
+//! with a different name, so [`BusinessArchetype`] carries its own required
+//! host city specialization, revenue rate, labor sensitivity, and running
+//! cost rather than sharing one formula; adding a second archetype
+//! (logistics, finance, ...) means adding a match arm to each, not
+//! touching the settlement loop.
+//!
+//! Net income is split into a labor cost (a fraction of revenue that grows
+//! with the host country's `crate::world::Country::union_power`, see
+//! [`labor_cost_fraction`]) and a fixed non-labor running cost (equipment,
+//! permits, safety compliance) that has to be paid whether or not the
+//! week's output was any good. This is the concrete hook proving union
+//! power actually raises labor costs for a real settled business, rather
+//! than a throwaway comparison function living alongside it.
 //!
 //! `sim-core` has no concept of a dynasty id yet (`SimState` only ever
 //! holds one dynasty; see `crate::dynasty`), so a business's "owner
@@ -25,20 +34,46 @@ use serde::{Deserialize, Serialize};
 use crate::dynasty::Dynasty;
 use crate::world::{City, CitySpecialization, EntityId, Sector};
 
-/// Revenue per resident of the host city, before the running cost is
-/// deducted. Scaled well below `economy::BASE_OUTPUT_PER_CAPITA`: a mining
-/// company only captures a slice of a city's output, not the whole city's
-/// economy.
+/// Revenue per resident of the host city, before labor and running costs
+/// are deducted. Scaled well below `economy::BASE_OUTPUT_PER_CAPITA`: a
+/// mining company only captures a slice of a city's output, not the whole
+/// city's economy.
 const MINING_REVENUE_PER_CAPITA: f64 = 0.006;
 
-/// Weekly running cost for a mining company: equipment upkeep, extraction
-/// permits, and safety compliance that has to be paid whether or not the
-/// week's output was any good. This fixed floor is the "genuinely
-/// different pressure" a mining company carries versus, say, a lower
-/// fixed-cost archetype that trades a smaller floor for more volatile
-/// revenue: chosen large enough that a small or badly-performing host city
-/// can push a mining company into a losing week, not just a smaller profit.
+/// Mining's labor cost as a fraction of revenue at `union_power == 0.0`
+/// (no organized labor). See [`labor_cost_fraction`] for how union power
+/// scales this upward. Labor-heavy, matching a mining company's real cost
+/// structure: wages already make up a large share of revenue even before
+/// unionizing.
+const MINING_BASE_LABOR_COST_FRACTION: f64 = 0.35;
+
+/// How much larger an archetype's baseline labor cost fraction can grow,
+/// proportionally, under fully organized labor (`union_power == 1.0`).
+/// Scaling by the archetype's own baseline (rather than by its headroom to
+/// `1.0`) means a labor-heavy archetype, which already spends more of its
+/// revenue on wages, sees the larger *absolute* swing from unionizing, not
+/// the smaller one. Chosen so the swing is clearly visible without ever
+/// being able to push labor cost past 100% of revenue.
+const UNION_POWER_LABOR_COST_BONUS: f64 = 0.4;
+
+/// Weekly non-labor running cost for a mining company: equipment upkeep,
+/// extraction permits, and safety compliance, on top of whatever labor
+/// costs union power drives. This fixed floor is the "genuinely different
+/// pressure" a mining company carries versus, say, a lower fixed-cost
+/// archetype that trades a smaller floor for more volatile revenue:
+/// chosen large enough that a small or badly-performing host city can push
+/// a mining company into a losing week, not just a smaller profit.
 const MINING_WEEKLY_RUNNING_COST: f64 = 45.0;
+
+/// An archetype's labor cost as a fraction of revenue at the given
+/// `union_power`. `union_power` is expected to already be within
+/// `0.0..=1.0` (see `invariants.rs`), but the result is clamped defensively
+/// here too so a corrupt value can't push the labor cost fraction outside a
+/// sane range.
+fn labor_cost_fraction(base_labor_cost_fraction: f64, union_power: f64) -> f64 {
+    let union_power = union_power.clamp(0.0, 1.0);
+    (base_labor_cost_fraction * (1.0 + union_power * UNION_POWER_LABOR_COST_BONUS)).clamp(0.0, 1.0)
+}
 
 /// A business archetype. Only one exists today; see the module docs for why
 /// each new archetype gets its own match arm rather than a shared formula.
@@ -63,24 +98,33 @@ impl BusinessArchetype {
         }
     }
 
+    fn base_labor_cost_fraction(&self) -> f64 {
+        match self {
+            BusinessArchetype::Mining => MINING_BASE_LABOR_COST_FRACTION,
+        }
+    }
+
     fn weekly_running_cost(&self) -> f64 {
         match self {
             BusinessArchetype::Mining => MINING_WEEKLY_RUNNING_COST,
         }
     }
 
-    /// This week's net income (revenue minus running cost) for a business
-    /// of this archetype hosted in `city`. Revenue scales with the host
-    /// city's population and tracks `City::recent_output_index`, the same
-    /// rolling measure `economy::settle_week` uses, so a business's
-    /// fortunes rise and fall with its host city's actual performance
-    /// rather than an independent dice roll; this keeps the settlement
-    /// pure and deterministic given the current sector state, with no
-    /// business-specific RNG stream needed.
-    fn weekly_net_income(&self, city: &City) -> f64 {
+    /// This week's net income (revenue minus labor cost minus the fixed
+    /// running cost) for a business of this archetype hosted in `city`,
+    /// whose host country has the given `union_power`. Revenue scales with
+    /// the host city's population and tracks `City::recent_output_index`,
+    /// the same rolling measure `economy::settle_week` uses, so a
+    /// business's fortunes rise and fall with its host city's actual
+    /// performance rather than an independent dice roll; this keeps the
+    /// settlement pure and deterministic given the current sector state,
+    /// with no business-specific RNG stream needed.
+    fn weekly_net_income(&self, city: &City, union_power: f64) -> f64 {
         let revenue =
             city.population.size as f64 * self.revenue_per_capita() * city.recent_output_index;
-        revenue - self.weekly_running_cost()
+        let labor_cost =
+            revenue * labor_cost_fraction(self.base_labor_cost_fraction(), union_power);
+        revenue - labor_cost - self.weekly_running_cost()
     }
 }
 
@@ -176,16 +220,23 @@ pub fn found_business_by_city_id(
 }
 
 /// Run one weekly settlement over every business: compute net income from
-/// its host city, fold it into the business's own `equity`, and pay it out
-/// to the owning character's `wealth`. A business whose host city or owner
-/// no longer resolves (a stale reference, which invariants.rs also flags)
-/// is skipped rather than panicking.
+/// its host city and host country's union power, fold it into the
+/// business's own `equity`, and pay it out to the owning character's
+/// `wealth`. A business whose host city no longer resolves (a stale
+/// reference, which invariants.rs also flags) is skipped rather than
+/// panicking; a resolvable city with no resolvable host country (should
+/// not happen outside a corrupt save) settles with `union_power` treated
+/// as `0.0` rather than panicking.
 pub fn settle_week(businesses: &mut [Business], sector: &Sector, dynasty: &mut Dynasty) {
     for business in businesses.iter_mut() {
         let Some(city) = sector.find_city(business.host_city_id) else {
             continue;
         };
-        let net_income = business.archetype.weekly_net_income(city);
+        let union_power = sector
+            .find_country_for_city(business.host_city_id)
+            .map(|country| country.union_power)
+            .unwrap_or(0.0);
+        let net_income = business.archetype.weekly_net_income(city, union_power);
         business.equity += net_income;
 
         if let Some(owner) = dynasty
@@ -203,7 +254,7 @@ mod tests {
     use super::*;
     use crate::dynasty::Character;
     use crate::portrait::PortraitDescriptor;
-    use crate::world::PopulationGroup;
+    use crate::world::{Country, GovernmentProfile, Planet, PopulationGroup, StarSystem};
     use crate::worldgen::generate_sector;
 
     fn city_with(specialization: CitySpecialization, size: u64) -> City {
@@ -231,6 +282,40 @@ mod tests {
             home_city: Some(1),
             portrait: PortraitDescriptor::generate_for_character(0, 7),
             traits: Vec::new(),
+        }
+    }
+
+    /// A minimal one-city sector hierarchy so `Sector::find_city` and
+    /// `Sector::find_country_for_city` resolve `city`, with the given
+    /// `union_power` on its host country.
+    fn sector_with(city: City, union_power: f64) -> Sector {
+        Sector {
+            seed: 1,
+            name: "Test Sector".to_string(),
+            systems: vec![StarSystem {
+                id: 1,
+                name: "Test System".to_string(),
+                planets: vec![Planet {
+                    id: 1,
+                    name: "Test Planet".to_string(),
+                    resource_tags: Vec::new(),
+                    resource_abundance: Vec::new(),
+                    countries: vec![Country {
+                        id: 1,
+                        name: "Test Country".to_string(),
+                        government: GovernmentProfile {
+                            federalism: 0.5,
+                            franchise: 0.5,
+                            economic_liberalism: 0.5,
+                            press_freedom: 0.5,
+                        },
+                        backstory: String::new(),
+                        social_mobility: 0.5,
+                        union_power,
+                        cities: vec![city],
+                    }],
+                }],
+            }],
         }
     }
 
@@ -291,62 +376,61 @@ mod tests {
     }
 
     #[test]
-    fn a_populous_thriving_city_produces_positive_net_income() {
+    fn a_populous_thriving_city_produces_positive_net_income_even_fully_unionized() {
         let city = city_with(CitySpecialization::Mining, 50_000);
-        let net_income = BusinessArchetype::Mining.weekly_net_income(&city);
+        let net_income = BusinessArchetype::Mining.weekly_net_income(&city, 1.0);
         assert!(net_income > 0.0);
     }
 
     #[test]
-    fn a_small_city_produces_a_loss_after_the_running_cost() {
+    fn a_small_city_produces_a_loss_after_costs() {
         // A tiny host city's revenue can't cover the fixed running cost:
         // this is the "genuinely different pressure" a mining company
         // carries versus a lower-fixed-cost archetype.
         let city = city_with(CitySpecialization::Mining, 100);
-        let net_income = BusinessArchetype::Mining.weekly_net_income(&city);
+        let net_income = BusinessArchetype::Mining.weekly_net_income(&city, 0.0);
         assert!(net_income < 0.0);
+    }
+
+    #[test]
+    fn higher_union_power_lowers_net_income_holding_everything_else_constant() {
+        let city = city_with(CitySpecialization::Mining, 50_000);
+        let low_union = BusinessArchetype::Mining.weekly_net_income(&city, 0.0);
+        let high_union = BusinessArchetype::Mining.weekly_net_income(&city, 1.0);
+
+        assert!(
+            high_union < low_union,
+            "full union power ({high_union}) should not out-earn no organized \
+             labor ({low_union}) holding the host city constant"
+        );
+    }
+
+    #[test]
+    fn labor_cost_fraction_clamps_a_corrupt_union_power_value() {
+        let low = labor_cost_fraction(MINING_BASE_LABOR_COST_FRACTION, -5.0);
+        let high = labor_cost_fraction(MINING_BASE_LABOR_COST_FRACTION, 5.0);
+        assert_eq!(
+            low,
+            labor_cost_fraction(MINING_BASE_LABOR_COST_FRACTION, 0.0)
+        );
+        assert_eq!(
+            high,
+            labor_cost_fraction(MINING_BASE_LABOR_COST_FRACTION, 1.0)
+        );
+        assert!(high <= 1.0);
     }
 
     #[test]
     fn settlement_pays_net_income_into_the_owners_wealth_and_the_business_equity() {
         let city = city_with(CitySpecialization::Mining, 50_000);
-        let mut sector = Sector {
-            seed: 1,
-            name: "Test Sector".to_string(),
-            systems: Vec::new(),
-        };
-        // Embed the city in a minimal hierarchy so `Sector::find_city`
-        // resolves it; see the `world` module docs for the hierarchy shape.
-        sector.systems.push(crate::world::StarSystem {
-            id: 1,
-            name: "Test System".to_string(),
-            planets: vec![crate::world::Planet {
-                id: 1,
-                name: "Test Planet".to_string(),
-                resource_tags: Vec::new(),
-                resource_abundance: Vec::new(),
-                countries: vec![crate::world::Country {
-                    id: 1,
-                    name: "Test Country".to_string(),
-                    government: crate::world::GovernmentProfile {
-                        federalism: 0.5,
-                        franchise: 0.5,
-                        economic_liberalism: 0.5,
-                        press_freedom: 0.5,
-                    },
-                    backstory: String::new(),
-                    social_mobility: 0.5,
-                    cities: vec![city.clone()],
-                }],
-            }],
-        });
+        let sector = sector_with(city.clone(), 0.5);
 
         let mut dynasty = Dynasty {
             name: "House Test".to_string(),
             head_character_id: 7,
             members: vec![owner()],
         };
-        let mut business = found_business(
+        let business = found_business(
             1,
             "Ferrous Extraction Co.".to_string(),
             BusinessArchetype::Mining,
@@ -354,12 +438,12 @@ mod tests {
             &city,
         )
         .unwrap();
-        let expected_net_income = BusinessArchetype::Mining.weekly_net_income(&city);
+        let expected_net_income = BusinessArchetype::Mining.weekly_net_income(&city, 0.5);
         let wealth_before = dynasty.members[0].wealth;
 
         let mut businesses = vec![business.clone()];
         settle_week(&mut businesses, &sector, &mut dynasty);
-        business = businesses.into_iter().next().unwrap();
+        let business = businesses.into_iter().next().unwrap();
 
         assert_eq!(business.equity, expected_net_income);
         assert_eq!(
@@ -428,10 +512,7 @@ mod tests {
             )
             .unwrap();
             let mut businesses = vec![business];
-
-            for _ in 0..10 {
-                settle_week(&mut businesses, &sector, &mut dynasty);
-            }
+            settle_week(&mut businesses, &sector, &mut dynasty);
             (businesses[0].equity, dynasty.members[0].wealth)
         };
 
