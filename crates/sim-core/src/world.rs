@@ -94,6 +94,22 @@ pub struct City {
     /// Accumulated economic output, in abstract credits. Not tied to any
     /// per-unit cargo simulation; see docs/ARCHITECTURE.md Economy section.
     pub treasury: f64,
+    /// Exponentially-weighted rolling measure of recent weekly output
+    /// relative to the city's noise-free baseline (population,
+    /// specialization multiplier, no random variance). `1.0` means output
+    /// has been tracking baseline; sustained values below (above) `1.0`
+    /// mean a depressed (booming) stretch, and `economy::settle_week` uses
+    /// this to drive unemployment. Defaults to `1.0` for saves predating
+    /// this field. See `crates/sim-core/src/economy.rs`.
+    #[serde(default = "default_recent_output_index")]
+    pub recent_output_index: f64,
+}
+
+/// Default for `City::recent_output_index` on saves from before this field
+/// existed: "output has been at baseline," the same value newly generated
+/// cities start with.
+fn default_recent_output_index() -> f64 {
+    1.0
 }
 
 /// Most inhabitants are represented statistically, never as individual

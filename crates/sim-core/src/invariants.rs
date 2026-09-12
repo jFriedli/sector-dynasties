@@ -26,6 +26,12 @@ pub fn check_invariants(state: &SimState) -> Vec<InvariantViolation> {
                             city.name, city.treasury
                         )));
                     }
+                    if !city.recent_output_index.is_finite() || city.recent_output_index < 0.0 {
+                        violations.push(InvariantViolation(format!(
+                            "city '{}' has an invalid recent_output_index: {}",
+                            city.name, city.recent_output_index
+                        )));
+                    }
                 }
             }
         }
@@ -69,6 +75,14 @@ mod tests {
     fn a_dangling_dynasty_head_is_caught() {
         let mut state = SimState::new(1);
         state.dynasty.head_character_id = 999_999;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_non_finite_recent_output_index_is_caught() {
+        let mut state = SimState::new(2);
+        state.sector.systems[0].planets[0].countries[0].cities[0].recent_output_index = f64::NAN;
         let violations = check_invariants(&state);
         assert!(!violations.is_empty());
     }

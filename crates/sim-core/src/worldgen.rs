@@ -118,6 +118,7 @@ fn generate_city(rng: &mut SimRng, next_id: &mut u32) -> City {
         specialization,
         population,
         treasury: 0.0,
+        recent_output_index: 1.0,
     }
 }
 
