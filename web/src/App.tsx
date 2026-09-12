@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import init, { SimHandle } from "./wasm/sim_wasm.js";
 import { copy } from "./content/copy";
-import type { StateSummary } from "./simTypes";
+import { SectorBrowser } from "./SectorBrowser";
+import type { SimStateSnapshot, StateSummary } from "./simTypes";
 
 const DAYS_PER_YEAR = 360;
 const YEAR_STEP_OPTIONS = [1, 5, 10] as const;
@@ -9,6 +10,7 @@ const YEAR_STEP_OPTIONS = [1, 5, 10] as const;
 export function App() {
   const [handle, setHandle] = useState<SimHandle | null>(null);
   const [summary, setSummary] = useState<StateSummary | null>(null);
+  const [snapshot, setSnapshot] = useState<SimStateSnapshot | null>(null);
   const [yearsToAdvance, setYearsToAdvance] = useState<number>(5);
 
   useEffect(() => {
@@ -18,6 +20,7 @@ export function App() {
       const h = new SimHandle(BigInt(42));
       setHandle(h);
       setSummary(JSON.parse(h.summary_json()) as StateSummary);
+      setSnapshot(JSON.parse(h.to_json()) as SimStateSnapshot);
     });
     return () => {
       cancelled = true;
@@ -28,6 +31,7 @@ export function App() {
     if (!handle) return;
     handle.step_days(DAYS_PER_YEAR);
     setSummary(JSON.parse(handle.summary_json()) as StateSummary);
+    setSnapshot(JSON.parse(handle.to_json()) as SimStateSnapshot);
   }, [handle]);
 
   // A synchronous call is intentional here: the bootstrap slice's data
@@ -38,9 +42,10 @@ export function App() {
     if (!handle) return;
     handle.step_days(DAYS_PER_YEAR * yearsToAdvance);
     setSummary(JSON.parse(handle.summary_json()) as StateSummary);
+    setSnapshot(JSON.parse(handle.to_json()) as SimStateSnapshot);
   }, [handle, yearsToAdvance]);
 
-  if (!summary) {
+  if (!summary || !snapshot) {
     return <p className="loading">{copy.loading}</p>;
   }
 
@@ -95,6 +100,7 @@ export function App() {
           {copy.advanceYearsButton}
         </button>
       </section>
+      <SectorBrowser sector={snapshot.sector} />
     </main>
   );
 }

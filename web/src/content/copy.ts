@@ -18,4 +18,10 @@ export const copy = {
   citiesLabel: "Cities",
   systemsLabel: "Star systems",
   loading: "Generating the sector...",
+  sectorBrowserTitle: "Sector browser",
+  browserCitiesLabel: "Known cities",
+  browserTreasuryLabel: "City treasury",
+  cityPopulationLabel: "Population",
+  cityTreasuryLabel: "Treasury",
+  planetsCount: (count: number) => `${count} ${count === 1 ? "planet" : "planets"}`,
 };

@@ -11,3 +11,48 @@ export interface StateSummary {
   dynasty_name: string;
   dynasty_wealth: number;
 }
+
+export type CitySpecialization = "Mining" | "Manufacturing" | "Finance" | "Research" | "Logistics";
+
+export interface PopulationGroup {
+  size: number;
+  average_wealth: number;
+  unemployment_rate: number;
+}
+
+export interface City {
+  id: number;
+  name: string;
+  specialization: CitySpecialization;
+  population: PopulationGroup;
+  treasury: number;
+}
+
+export interface Country {
+  id: number;
+  name: string;
+  cities: City[];
+}
+
+export interface Planet {
+  id: number;
+  name: string;
+  countries: Country[];
+}
+
+export interface StarSystem {
+  id: number;
+  name: string;
+  planets: Planet[];
+}
+
+export interface Sector {
+  seed: number;
+  name: string;
+  systems: StarSystem[];
+}
+
+export interface SimStateSnapshot {
+  seed: number;
+  sector: Sector;
+}

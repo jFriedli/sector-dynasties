@@ -132,6 +132,7 @@ select:focus-visible {
   flex-wrap: wrap;
   gap: 12px;
   align-items: end;
+  margin-bottom: 32px;
   padding: 16px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
@@ -176,4 +177,187 @@ select:focus-visible {
   margin: 40vh auto 0;
   color: var(--color-text);
   font-size: 1.125rem;
+}
+
+.sector-browser {
+  display: grid;
+  gap: 16px;
+}
+
+.section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: end;
+  justify-content: space-between;
+}
+
+.section-heading h2 {
+  margin: 0 0 4px;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.section-heading p {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.browser-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+}
+
+.browser-totals div {
+  min-width: 140px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.browser-totals dt,
+.city-row dt {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 800;
+}
+
+.browser-totals dd,
+.city-row dd {
+  margin: 0;
+  color: var(--color-text);
+  font-weight: 800;
+}
+
+.system-list,
+.planet-list,
+.country-list,
+.city-list {
+  display: grid;
+  gap: 12px;
+}
+
+.system-panel {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+  overflow: hidden;
+}
+
+.system-panel summary {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  color: var(--color-primary-text);
+  background: var(--color-primary);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.system-panel summary:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: -6px;
+}
+
+.system-panel summary span:last-child {
+  font-size: 0.875rem;
+}
+
+.planet-list {
+  padding: 14px;
+  background: var(--color-surface-muted);
+}
+
+.planet-panel,
+.country-panel,
+.city-row {
+  min-width: 0;
+}
+
+.planet-panel {
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.planet-panel h3,
+.country-panel h4,
+.city-row h5,
+.city-row p {
+  margin: 0;
+}
+
+.planet-panel h3 {
+  margin-bottom: 12px;
+  font-size: 1.125rem;
+  letter-spacing: 0;
+}
+
+.country-panel {
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.country-panel:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.country-panel h4 {
+  margin-bottom: 10px;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  letter-spacing: 0;
+}
+
+.city-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(240px, 1.2fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-left: 5px solid var(--color-accent-city);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.city-row h5 {
+  font-size: 1rem;
+  letter-spacing: 0;
+}
+
+.city-row p {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.city-row dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(96px, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .app-shell {
+    padding: 40px 0;
+  }
+
+  .city-row {
+    grid-template-columns: 1fr;
+  }
+
+  .city-row dl {
+    grid-template-columns: 1fr;
+  }
 }
