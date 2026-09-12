@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::dynasty::{Character, Dynasty};
 use crate::economy;
+use crate::portrait::PortraitDescriptor;
 use crate::rng::SimRng;
 use crate::save::{load_and_migrate, SaveError};
 use crate::time::SimClock;
@@ -43,13 +44,15 @@ impl SimState {
             .and_then(|c| c.cities.first())
             .map(|c| c.id);
 
+        let founder_id = 1;
         let founder = Character {
-            id: 1,
+            id: founder_id,
             name: "Founder".to_string(),
             age_years: 28 + character_rng.next_below(20),
             alive: true,
             wealth: character_rng.range_f64(1_000.0, 10_000.0),
             home_city,
+            portrait: PortraitDescriptor::generate_for_character(seed, founder_id),
         };
 
         let dynasty = Dynasty {

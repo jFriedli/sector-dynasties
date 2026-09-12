@@ -11,7 +11,7 @@ I/O, no rendering, and (checked by CI) builds unmodified to `wasm32-unknown-unkn
 Everything else consumes it:
 
 ```
-crates/sim-core   pure simulation: world, dynasty, economy, time, rng, invariants
+crates/sim-core   pure simulation: world, dynasty, portrait, economy, time, rng, invariants
 crates/sim-cli    headless binary over sim-core, for scripted runs and soak tests
 crates/sim-wasm   thin wasm-bindgen bridge, zero game rules of its own
 web/              React/TypeScript UI, calls into sim-wasm, renders state
@@ -37,6 +37,12 @@ If you find yourself writing a game rule (a formula, a threshold, a decision) in
   procedural history is backlog work under the `worldgen` label.
 - `dynasty.rs` — `Character` and `Dynasty`. The player always controls
   `Dynasty::head()`; other members are simulated but not directly controlled.
+- `portrait.rs` — `PortraitDescriptor`, a character's appearance as plain
+  categorical/numeric traits (skin tone, hair, eyes, build, height), attached
+  to `Character`. Deliberately has no image format, file path, or network
+  field: a renderer decides how to draw a descriptor, `sim-core` never knows
+  or depends on which approach is in use. See docs/ASSETS.md's "Character
+  portraits" section.
 - `economy.rs` — weekly settlement over cities. Intentionally minimal (no goods,
   production chains, or trade routes yet); it exists to prove the tick/frequency
   architecture. Real production chains are `economy`/`trade` backlog work.

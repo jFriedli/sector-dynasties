@@ -3,6 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::portrait::PortraitDescriptor;
 use crate::world::EntityId;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -14,6 +15,9 @@ pub struct Character {
     pub wealth: f64,
     /// City where this character currently resides, if any.
     pub home_city: Option<EntityId>,
+    /// Appearance descriptor, independent of any rendering technique. See
+    /// `crate::portrait`.
+    pub portrait: PortraitDescriptor,
 }
 
 impl Character {
@@ -56,6 +60,7 @@ mod tests {
                     alive: false,
                     wealth: 0.0,
                     home_city: None,
+                    portrait: PortraitDescriptor::generate_for_character(0, 1),
                 },
                 Character {
                     id: 2,
@@ -64,6 +69,7 @@ mod tests {
                     alive: true,
                     wealth: 1200.0,
                     home_city: Some(1),
+                    portrait: PortraitDescriptor::generate_for_character(0, 2),
                 },
             ],
         };
