@@ -1,4 +1,4 @@
-import type { City, CitySpecialization, Sector } from "./simTypes";
+import type { City, CitySpecialization, PopulationGroup, Sector } from "./simTypes";
 
 export interface CityBrowserRow {
   id: number;
@@ -11,7 +11,18 @@ export interface CityBrowserRow {
   treasury: number;
 }
 
-export function cityRowsFromSector(sector: Sector): CityBrowserRow[] {
+export interface CityDetail {
+  id: number;
+  name: string;
+  systemName: string;
+  planetName: string;
+  countryName: string;
+  specialization: CitySpecialization;
+  population: PopulationGroup;
+  treasury: number;
+}
+
+export function cityDetailsFromSector(sector: Sector): CityDetail[] {
   return sector.systems.flatMap((system) =>
     system.planets.flatMap((planet) =>
       planet.countries.flatMap((country) =>
@@ -22,12 +33,29 @@ export function cityRowsFromSector(sector: Sector): CityBrowserRow[] {
           planetName: planet.name,
           countryName: country.name,
           specialization: city.specialization,
-          population: city.population.size,
+          population: city.population,
           treasury: city.treasury,
         })),
       ),
     ),
   );
+}
+
+export function cityRowsFromSector(sector: Sector): CityBrowserRow[] {
+  return cityDetailsFromSector(sector).map((city) => ({
+    id: city.id,
+    name: city.name,
+    systemName: city.systemName,
+    planetName: city.planetName,
+    countryName: city.countryName,
+    specialization: city.specialization,
+    population: city.population.size,
+    treasury: city.treasury,
+  }));
+}
+
+export function cityDetailById(sector: Sector, cityId: number): CityDetail | null {
+  return cityDetailsFromSector(sector).find((city) => city.id === cityId) ?? null;
 }
 
 export function totalTreasury(cities: readonly CityBrowserRow[]): number {
