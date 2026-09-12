@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::birth;
 use crate::business::{self, Business, BusinessArchetype, FoundBusinessError};
+use crate::career::{self, Career, CareerTrack, StartCareerError};
 use crate::dynasty::{Character, Dynasty, DynastyMemberSummary};
 use crate::economy;
 use crate::favor::{self, Favor, GrantFavorError};
@@ -37,6 +38,11 @@ pub struct SimState {
     /// new ones are created.
     #[serde(default)]
     pub businesses: Vec<Business>,
+    /// Every character's job, across every career track. Empty on a save
+    /// from before careers existed; see `career::start_career` for how new
+    /// ones are created.
+    #[serde(default)]
+    pub careers: Vec<Career>,
     /// Outstanding character-to-character favors (issue #67), the first
     /// non-wealth influence currency per `GAME_DESIGN.md`'s politics
     /// section. Empty on a save from before favors existed. Create these
@@ -48,6 +54,19 @@ pub struct SimState {
     pub favors: Vec<Favor>,
     economy_rng: SimRng,
     mortality_rng: SimRng,
+    /// Placeholder domain on a save from before careers existed: no
+    /// careers exist yet either, so this stream is never drawn from until
+    /// a fresh one is started, at which point the save carries its own
+    /// concrete state again. See `default_career_rng`.
+    #[serde(default = "default_career_rng")]
+    career_rng: SimRng,
+}
+
+/// Default for `SimState::career_rng` on saves predating the careers
+/// system. Any fixed seed works: see the field's own doc comment for why
+/// this never observably matters.
+fn default_career_rng() -> SimRng {
+    SimRng::from_seed(0, "career")
 }
 
 impl SimState {
@@ -100,9 +119,11 @@ impl SimState {
             sector,
             dynasty,
             businesses: Vec::new(),
+            careers: Vec::new(),
             favors: Vec::new(),
             economy_rng: SimRng::from_seed(seed, "economy"),
             mortality_rng: SimRng::from_seed(seed, "dynasty:mortality"),
+            career_rng: SimRng::from_seed(seed, "career"),
         }
     }
 
@@ -129,6 +150,29 @@ impl SimState {
         Ok(id)
     }
 
+    /// Start a new career for `character_id` on `track`, based in the city
+    /// with id `employer_city_id`. Fails without mutating `self` if the
+    /// city doesn't exist or the character already holds a career on that
+    /// track; see `career::start_career`.
+    pub fn start_career(
+        &mut self,
+        track: CareerTrack,
+        character_id: EntityId,
+        employer_city_id: EntityId,
+    ) -> Result<EntityId, StartCareerError> {
+        let id = self.careers.iter().map(|c| c.id).max().unwrap_or(0) + 1;
+        let started = career::start_career(
+            id,
+            track,
+            character_id,
+            employer_city_id,
+            &self.sector,
+            &self.careers,
+        )?;
+        self.careers.push(started);
+        Ok(id)
+    }
+
     /// Record a favor: `debtor_id` now owes `creditor_id`, worth
     /// `magnitude`. Fails without mutating `self` if either id doesn't
     /// reference an existing dynasty member, or if the resulting favor is
@@ -152,6 +196,13 @@ impl SimState {
         if self.clock.is_week_boundary() {
             economy::settle_week(&mut self.sector, &mut self.economy_rng);
             business::settle_week(&mut self.businesses, &self.sector, &mut self.dynasty);
+            career::settle_week(
+                &mut self.careers,
+                &self.sector,
+                &mut self.dynasty,
+                &self.favors,
+                &mut self.career_rng,
+            );
         }
         if self.clock.is_month_boundary() {
             migration::run_monthly_migration(&mut self.sector);
@@ -220,6 +271,7 @@ impl SimState {
         vec![
             RngDomainSummary::new("economy", &self.economy_rng),
             RngDomainSummary::new("dynasty:mortality", &self.mortality_rng),
+            RngDomainSummary::new("career", &self.career_rng),
         ]
     }
 
@@ -426,9 +478,10 @@ mod tests {
         let state = SimState::new(2026);
         let summary = state.summary();
         assert_eq!(summary.seed, 2026);
-        assert_eq!(summary.rng_domains.len(), 2);
+        assert_eq!(summary.rng_domains.len(), 3);
         assert_eq!(summary.rng_domains[0].domain, "economy");
         assert_eq!(summary.rng_domains[1].domain, "dynasty:mortality");
+        assert_eq!(summary.rng_domains[2].domain, "career");
     }
 
     #[test]
@@ -528,5 +581,95 @@ mod tests {
         resumed.step_days(100);
 
         assert_eq!(uninterrupted.to_json(), resumed.to_json());
+    }
+
+    #[test]
+    fn starting_a_career_hires_the_founder_at_the_bottom_rung() {
+        let mut state = SimState::new(2026);
+        let home_city = state.dynasty.head().unwrap().home_city.unwrap();
+
+        let career_id = state
+            .start_career(
+                CareerTrack::Corporate,
+                state.dynasty.head_character_id,
+                home_city,
+            )
+            .expect("founder should be hirable in their home city");
+
+        let career = state.careers.iter().find(|c| c.id == career_id).unwrap();
+        assert_eq!(career.level, 0);
+        assert_eq!(career.job_title(), "Analyst");
+    }
+
+    #[test]
+    fn starting_a_second_career_on_the_same_track_is_refused() {
+        let mut state = SimState::new(2026);
+        let home_city = state.dynasty.head().unwrap().home_city.unwrap();
+        let head_id = state.dynasty.head_character_id;
+
+        state
+            .start_career(CareerTrack::Corporate, head_id, home_city)
+            .unwrap();
+        let err = state
+            .start_career(CareerTrack::Corporate, head_id, home_city)
+            .expect_err("the founder already holds a Corporate career");
+        assert_eq!(
+            err,
+            StartCareerError::AlreadyOnTrack {
+                character_id: head_id,
+                track: CareerTrack::Corporate,
+            }
+        );
+    }
+
+    #[test]
+    fn a_working_founder_accrues_salary_over_time() {
+        let mut state = SimState::new(2026);
+        let home_city = state.dynasty.head().unwrap().home_city.unwrap();
+        let head_id = state.dynasty.head_character_id;
+        state
+            .start_career(CareerTrack::Corporate, head_id, home_city)
+            .unwrap();
+
+        let wealth_before = state.dynasty.head().unwrap().wealth;
+        state.step_days(365);
+        let wealth_after = state.dynasty.head().unwrap().wealth;
+
+        assert!(
+            wealth_after > wealth_before,
+            "a year of salaried employment should grow the founder's wealth"
+        );
+    }
+
+    #[test]
+    fn same_seed_and_step_count_produce_identical_state_with_a_career_in_progress() {
+        fn run(seed: u64) -> String {
+            let mut state = SimState::new(seed);
+            let home_city = state.dynasty.head().unwrap().home_city.unwrap();
+            let head_id = state.dynasty.head_character_id;
+            state
+                .start_career(CareerTrack::Corporate, head_id, home_city)
+                .unwrap();
+            state.step_days(400);
+            state.to_json()
+        }
+
+        assert_eq!(run(2026), run(2026));
+    }
+
+    #[test]
+    fn the_career_rng_fingerprint_advances_after_a_settled_week_with_a_career_in_progress() {
+        let mut state = SimState::new(2026);
+        let home_city = state.dynasty.head().unwrap().home_city.unwrap();
+        let head_id = state.dynasty.head_character_id;
+        state
+            .start_career(CareerTrack::Corporate, head_id, home_city)
+            .unwrap();
+
+        let before = state.summary().rng_domains[2].fingerprint.clone();
+        state.step_days(7);
+        let after = state.summary().rng_domains[2].fingerprint.clone();
+
+        assert_ne!(before, after);
     }
 }
