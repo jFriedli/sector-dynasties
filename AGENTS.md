@@ -43,6 +43,8 @@ to change one, say so explicitly in the PR description:
   eventually want a field here; add narrowly and justify it)
 - `crates/sim-core/src/invariants.rs` (shared invariant list: additive changes are
   usually fine, but check for merge conflicts with other in-flight PRs)
+- `crates/sim-core/src/save.rs` (save format migrations: additive per schema bump,
+  but only touch this when you're actually bumping `SAVE_SCHEMA_VERSION`)
 - `crates/sim-core/src/lib.rs`, `Cargo.toml` files (module/dependency wiring)
   and `web/package.json` (frontend dependency wiring)
 - `.github/workflows/ci.yml`, `AGENTS.md`, `CONTRIBUTING.md` (process files: change
@@ -82,8 +84,15 @@ module instead of growing an existing one.
 - One issue per PR wherever practical.
 - PR description: what changed and why, and how it was tested (which commands you
   ran, not just "tests pass"). Link the issue (`Closes #N`).
-- Don't self-merge unless the repo owner has told you self-merge is standing for
-  this repository; otherwise wait for review or CI-only merge policy as configured.
+- Self-merge is standing policy for this repository. There is no separate
+  integration/review agent; the worker who opens the PR merges it themselves once
+  every required CI check (Rust, Windows, Frontend) is green, the PR is not a
+  draft, is cleanly mergeable against current `main`, every linked dependency is
+  merged, and the issue's acceptance criteria and testing are actually satisfied.
+  Squash-merge and delete the branch.
+- If a gate above is unmet, or the PR touches a `high-collision` file with another
+  active in-flight PR, leave it open and `status:in-progress`, note the blocker
+  briefly, and wait rather than merge through it.
 - If you discover a good follow-up opportunity while working, open a concise issue
   for it rather than expanding your current PR's scope.
 

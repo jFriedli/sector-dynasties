@@ -44,6 +44,9 @@ If you find yourself writing a game rule (a formula, a threshold, a decision) in
   debug/test builds. A violation is always a bug, never a game event. Extend this
   whenever you add state that has a validity rule (a range, a non-NaN requirement, a
   foreign-key-style reference that must resolve).
+- `save.rs` — save format version detection and migration (`load_and_migrate`,
+  `SaveError`). See "Persistence" below; this is the one place a schema-bumping change
+  needs a new migration step.
 - `state.rs` — `SimState`, the single authoritative struct, and its `step_one_day` /
   `step_days`. Owns the per-domain RNG streams that need to persist across ticks (so
   far, just `economy_rng`). Also owns save/load (`to_json`/`from_json`) and
@@ -76,16 +79,48 @@ test for the property being protected.
 ## Persistence
 
 `SimState` derives `Serialize`/`Deserialize` and is the entire save format; there is
-no separate save schema to keep in sync. `SAVE_SCHEMA_VERSION` in `state.rs` exists for
-the migration system that will be needed once the shape of `SimState` changes in a
-save-breaking way; there is no migration path yet because there has only ever been one
-schema version. When you make a breaking change to any type reachable from
-`SimState`, bump `SAVE_SCHEMA_VERSION` and add a migration rather than breaking old
-saves silently.
+no separate save schema to keep in sync. Serialization is completely storage-agnostic:
+`to_json`/`from_json` produce and consume a plain `String`, so a save's destination
+(a file, a browser storage adapter, an in-memory buffer in a test) is entirely a
+caller concern. `sim-core` and `sim-wasm` never touch a filesystem, `localStorage`, or
+IndexedDB directly; only `sim-cli` (native files, see below) and eventually a
+browser-side storage adapter in `web/` (backlog, not built yet: `#34`/`#89` cover the
+save-slot UI, IndexedDB should back it for anything beyond the trivial bootstrap slice,
+never `localStorage`, since campaign saves are not small) are I/O.
+
+`crates/sim-core/src/save.rs` owns save format versioning: `SAVE_SCHEMA_VERSION` in
+`state.rs` is the current schema, and `save::load_and_migrate` checks it before
+`state.rs` does the final typed deserialization. Three outcomes: a JSON `Value` at the
+current version is deserialized directly; a `Value` at an older known version runs
+through `save::migrate_step` (one match arm per `from_version`, additive only) until it
+reaches the current version; a `Value` newer than `SAVE_SCHEMA_VERSION` is rejected as
+`SaveError::UnsupportedFutureVersion` rather than guessed at. Anything that isn't valid
+JSON, or is JSON missing a required field (including `schema_version` itself), is
+`SaveError::Corrupt`. Loading never silently produces a corrupted `SimState`; add a
+migration test with a synthetic old-version fixture (see `save.rs`'s tests) any time
+you actually bump `SAVE_SCHEMA_VERSION`.
+
+`crates/sim-cli` proves native filesystem persistence works end to end today:
+`sim-cli run --save <path>` writes a save, and `sim-cli load --path <path> --years <n>`
+resumes it and advances further. This is also the reproduction workflow for a bug
+report: a seed and a day count, or an exact save file and a day count, reproduces the
+state headlessly without touching the UI or a graphical editor.
 
 `serde_json`'s `float_roundtrip` feature is required (see ADR 0001) for save/load to
 be exact; it's already enabled in every crate that touches `SimState` JSON. Keep it
 enabled in any new crate that does the same.
+
+## Windows, desktop, and Steam
+
+CI's `windows` job builds and tests the whole Rust workspace (and the `wasm32`
+target) on `windows-latest`; that's an automated proxy for "does this compile and
+pass on Windows," not a substitute for a human or agent actually running the editor
+or a packaged build there (see `AGENTS.md`'s Windows/Linux split). Nothing in
+`sim-core`, `sim-cli`, or `sim-wasm` uses a Linux-only API. Tauri (for a native
+desktop build) and Steam (for distribution) are both deferred until there's a
+packaging reason to add them; see `docs/STEAM_READINESS.md` for the constraints that
+keep Steam an optional distribution layer rather than an architecture dependency, and
+issues `#101`-`#103` for the packaging spikes.
 
 ## Frontend
 

@@ -73,6 +73,8 @@ npm run dev
 - `docs/TESTING.md` — the full testing strategy and how to run each layer.
 - `docs/CONTENT_GUIDE.md` — rules for player-facing writing and event content.
 - `docs/ASSETS.md` — asset licensing and the portrait pipeline plan.
+- `docs/STEAM_READINESS.md` — constraints that keep Steam an optional distribution
+  layer rather than an architecture dependency.
 
 ## License
 

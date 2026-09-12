@@ -11,6 +11,16 @@
 - **Serialization round-trip tests** (`state::tests::save_and_load_round_trips_exactly`,
   `resuming_from_a_save_continues_the_same_future_as_an_uninterrupted_run`): save/load
   must be exact, and resuming must continue the same future as never having paused.
+- **Save versioning and migration tests** (`crates/sim-core/src/save.rs`,
+  `state::tests::loading_*`): malformed JSON, a save missing `schema_version`, and a
+  save from an unsupported future version are each rejected with a distinct
+  `SaveError` rather than ever loading into a corrupted `SimState`. A synthetic
+  old-version fixture proves the migration chain dispatches correctly even though
+  there has only ever been one real schema version so far.
+- **CLI native persistence test** (`crates/sim-cli/src/main.rs`,
+  `saving_and_loading_a_file_continues_the_same_future_as_an_uninterrupted_run`):
+  `sim-cli run --save` then `sim-cli load` round-trips through a real file on disk and
+  continues the same future as an uninterrupted run.
 - **Invariant checks** (`crates/sim-core/src/invariants.rs`): cheap structural
   validity checks (no NaN/negative population or treasury, dynasty head resolves to a
   real member) runnable every tick in debug/test builds. A violation is a bug.
@@ -54,9 +64,10 @@ built speculatively during bootstrap:
   economy invariants would be a good early one).
 - Playwright end-to-end tests: deferred until there's enough real UI to justify them
   (see ADR 0001). Don't add Playwright to prove a two-button page works.
-- Save migration tests: there is only one schema version so far
-  (`SAVE_SCHEMA_VERSION` in `state.rs`). Add a migration test the first time that
-  version needs to bump.
+- A real save migration: `save.rs` has the scaffolding and a synthetic-fixture test,
+  but there has only ever been one real schema version so far. Add a real migration
+  step and a fixture from the actual old shape the first time `SAVE_SCHEMA_VERSION`
+  bumps.
 - Performance/benchmark tests: no population-scale stress yet; add
   `criterion`-based benchmarks once a system's performance actually matters.
 - Visual regression tests and fuzzing: valuable later, not before there's UI or
