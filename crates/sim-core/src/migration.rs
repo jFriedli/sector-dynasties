@@ -190,6 +190,7 @@ mod tests {
                     id: 1,
                     name: "Test Planet".to_string(),
                     resource_tags: vec![ResourceTag::Agricultural],
+                    resource_abundance: Vec::new(),
                     countries: vec![Country {
                         id: 1,
                         name: "Test Country".to_string(),
@@ -201,6 +202,7 @@ mod tests {
                         },
                         backstory: "Test backstory.".to_string(),
                         social_mobility: 0.5,
+                        union_power: 0.5,
                         cities: vec![rich, poor],
                     }],
                 }],
