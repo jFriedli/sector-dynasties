@@ -10,6 +10,8 @@ import { SaveControls, type SaveLoadStatus } from "./SaveControls";
 import { createSaveSlot, DEFAULT_SLOT_ID, type SaveSlotStore } from "./saveSlots";
 import { SectorBrowser } from "./SectorBrowser";
 import { StateInspector } from "./StateInspector";
+import { createTauriFsSaveSlotStore } from "./tauriFsSaveSlotStore";
+import { isTauriRuntime } from "./tauriRuntime";
 import { TimeControls } from "./TimeControls";
 import { cityDetailById } from "./sectorBrowser";
 import type { LastStepPerformance } from "./simPerformance";
@@ -27,9 +29,26 @@ export function App() {
   const [lastStep, setLastStep] = useState<LastStepPerformance | null>(null);
   const [yearsToAdvance, setYearsToAdvance] = useState<number>(5);
   const debugOverlayVisible = useDebugOverlayVisible();
-  const [saveStore] = useState<SaveSlotStore>(() => createIndexedDbSaveSlotStore());
+  const [saveStore, setSaveStore] = useState<SaveSlotStore>(() => createIndexedDbSaveSlotStore());
   const [hasSavedSlot, setHasSavedSlot] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveLoadStatus>({ kind: "idle" });
+
+  // Swap in the filesystem-backed store when running inside the Tauri
+  // desktop shell (issue #102's Linux packaging spike). The browser
+  // target never runs this branch, so it keeps using IndexedDB exactly as
+  // before; see `tauriFsSaveSlotStore.ts` for why both implement the same
+  // `SaveSlotStore` interface instead of App.tsx branching on save/load
+  // calls directly.
+  useEffect(() => {
+    if (!isTauriRuntime()) return;
+    let cancelled = false;
+    createTauriFsSaveSlotStore().then((store) => {
+      if (!cancelled) setSaveStore(store);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
