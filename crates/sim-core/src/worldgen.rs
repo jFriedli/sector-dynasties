@@ -140,6 +140,7 @@ fn generate_country(rng: &mut SimRng, next_id: &mut u32, planet_tags: &[Resource
         press_freedom: rng.next_f64(),
     };
     let social_mobility = rng.next_f64();
+    let union_power = rng.next_f64();
     let city_count = 1 + rng.next_below(3);
 
     let cities = (0..city_count)
@@ -152,6 +153,7 @@ fn generate_country(rng: &mut SimRng, next_id: &mut u32, planet_tags: &[Resource
         government,
         backstory,
         social_mobility,
+        union_power,
         cities,
     }
 }
@@ -249,6 +251,23 @@ mod tests {
                         "country {} has out-of-range social_mobility {}",
                         country.name,
                         country.social_mobility
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn generated_union_power_is_in_range() {
+        let sector = generate_sector(55, 3);
+        for system in &sector.systems {
+            for planet in &system.planets {
+                for country in &planet.countries {
+                    assert!(
+                        (0.0..=1.0).contains(&country.union_power),
+                        "country {} has out-of-range union_power {}",
+                        country.name,
+                        country.union_power
                     );
                 }
             }

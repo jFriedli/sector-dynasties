@@ -59,6 +59,7 @@ export interface Country {
   name: string;
   backstory: string;
   social_mobility: number;
+  union_power: number;
   cities: City[];
 }
 

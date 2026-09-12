@@ -21,6 +21,12 @@ pub fn check_invariants(state: &SimState) -> Vec<InvariantViolation> {
                         country.name, country.social_mobility
                     )));
                 }
+                if !country.union_power.is_finite() || !(0.0..=1.0).contains(&country.union_power) {
+                    violations.push(InvariantViolation(format!(
+                        "country '{}' has an invalid union_power: {}",
+                        country.name, country.union_power
+                    )));
+                }
                 for city in &country.cities {
                     if !city.population.is_valid() {
                         violations.push(InvariantViolation(format!(
@@ -157,6 +163,22 @@ mod tests {
     fn a_non_finite_social_mobility_is_caught() {
         let mut state = SimState::new(4);
         state.sector.systems[0].planets[0].countries[0].social_mobility = f64::NAN;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn an_out_of_range_union_power_is_caught() {
+        let mut state = SimState::new(5);
+        state.sector.systems[0].planets[0].countries[0].union_power = 1.5;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_non_finite_union_power_is_caught() {
+        let mut state = SimState::new(6);
+        state.sector.systems[0].planets[0].countries[0].union_power = f64::NAN;
         let violations = check_invariants(&state);
         assert!(!violations.is_empty());
     }

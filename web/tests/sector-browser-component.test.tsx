@@ -21,6 +21,7 @@ const sector: Sector = {
               name: "North Compact",
               backstory: "Built around orbital freight contracts.",
               social_mobility: 0.5,
+              union_power: 0.5,
               cities: [
                 {
                   id: 4,
