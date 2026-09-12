@@ -41,6 +41,41 @@ jobs:
       - name: wasm build check
         run: cargo build -p sim-wasm --target wasm32-unknown-unknown --release
 
+  windows-tauri:
+    name: Windows Tauri packaging spike (build)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            web/src-tauri -> target
+      - name: install wasm-pack
+        shell: pwsh
+        run: iwr https://rustwasm.github.io/wasm-pack/installer/init.ps1 -useb | iex
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: npm ci
+        working-directory: web
+        run: npm ci
+      - name: tauri build (nsis, Windows target only)
+        # beforeBuildCommand in web/src-tauri/tauri.conf.json builds the wasm
+        # bridge and the static frontend before the native shell is compiled
+        # and bundled. This is issue #103's actual validation evidence: a
+        # green run here proves the Tauri config, icons, and Rust shell
+        # compile and bundle on a real Windows toolchain. It does not prove
+        # the resulting window/installer behaves correctly at runtime on
+        # Windows; that still needs a human on real hardware, tracked in
+        # issue #152.
+        working-directory: web
+        run: npx tauri build
+
   frontend:
     name: Frontend (lint, typecheck, test, build)
     runs-on: ubuntu-latest

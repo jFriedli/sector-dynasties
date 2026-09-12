@@ -59,6 +59,18 @@ The hypothesis is confirmed. The bootstrap slice (`crates/sim-core`, `crates/sim
   `npm run build:wasm` and gitignored. CI and any local frontend work must run that
   script (or `npm run build`, which does not itself rebuild wasm) before building or
   testing the frontend. See `docs/TESTING.md`.
+- **Windows Tauri packaging spike (issue #103).** A minimal `web/src-tauri` Tauri v2
+  shell (no IPC/commands, no simulation logic, `sim-core` untouched) wraps the
+  existing `web/dist` static build. What's actually proven: the config, generated
+  icons, and Rust shell compile and produce an NSIS-targeted bundle on GitHub's
+  `windows-latest` CI runner (`.github/workflows/ci.yml`'s `windows-tauri` job
+  running `npx tauri build`), and the same shell also compiles and launches without
+  crashing under Xvfb on Linux (a sanity check only, not Windows evidence, since this
+  work was done from Kali Linux). What is **not** proven: that the native window,
+  the WebView2-backed webview, or the NSIS installer actually behave correctly when
+  double-clicked on real Windows hardware. Nothing here contradicts the "Windows
+  validation is unverified" gap above; it narrows it from "the whole toolchain" to
+  specifically "runtime UX," tracked as a follow-up issue linked from the PR.
 
 ## Alternatives considered
 
