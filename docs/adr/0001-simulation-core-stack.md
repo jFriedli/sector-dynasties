@@ -85,16 +85,18 @@ The hypothesis is confirmed. The bootstrap slice (`crates/sim-core`, `crates/sim
   signed; the locally built installer also had no Mark of the Web, so this pass is
   not representative of SmartScreen reputation prompts for downloaded releases.
   Production signing is tracked in issue #161.
-- **Found while building the above: the frontend doesn't typecheck on a
-  case-insensitive filesystem.** `web/src` has PascalCase-component/
-  camelCase-logic filename pairs (`DynastyPanel.tsx`/`dynastyPanel.ts`,
-  `GlobalSearch.tsx`/`globalSearch.ts`, `SectorBrowser.tsx`/`sectorBrowser.ts`,
-  `StateInspector.tsx`/`stateInspector.ts`) that only collide under `tsc -b` on
-  Windows/macOS, not Linux, which is why this had never surfaced in CI before
-  (the `frontend` job only ever ran on `ubuntu-latest`). #103 works around it in
-  its own CI job (consume a pre-built dist rather than rebuild the frontend on
-  Windows) rather than fixing it, since the fix is a cross-cutting rename that
-  touches several other features' files; see issue #158.
+- **Found while building the above: the frontend didn't typecheck on a
+  case-insensitive filesystem.** `web/src` had PascalCase-component/
+  camelCase-logic filename pairs (`DynastyPanel.tsx`/`dynastyPanel.ts`, and
+  three more) that only collided under `tsc -b` on Windows/macOS, not Linux,
+  which is why this had never surfaced in CI before (the `frontend` job only
+  ever ran on `ubuntu-latest`). #103 worked around it in its own CI job
+  (consume a pre-built dist rather than rebuild the frontend on Windows)
+  rather than fixing it, since the fix was a cross-cutting rename touching
+  several other features' files. Fixed in #158 by renaming every logic
+  module to a `*Logic.ts` suffix (`dynastyPanelLogic.ts`, and so on) instead
+  of a same-name case pair; #103's CI workaround is left in place since it's
+  still valid and slightly faster.
 
 ## Alternatives considered
 

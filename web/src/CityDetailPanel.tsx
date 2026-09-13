@@ -2,7 +2,7 @@ import { type FormEvent, useState } from "react";
 import { Landmark } from "lucide-react";
 import { copy } from "./content/copy";
 import { SpecializationIcon } from "./gameIcons";
-import { specializationLabel, type CityDetail } from "./sectorBrowser";
+import { specializationLabel, type CityDetail } from "./sectorBrowserLogic";
 import type { GovernmentComponent, LobbyingOutcome, PolicyDirection } from "./simTypes";
 
 const numberFormat = new Intl.NumberFormat("en-US");
@@ -39,9 +39,7 @@ interface CityDetailPanelProps {
 export function CityDetailPanel({ city, lobbyingCost, onLobby }: CityDetailPanelProps) {
   const [component, setComponent] = useState<GovernmentComponent>("federalism");
   const [direction, setDirection] = useState<PolicyDirection>("increase");
-  const [status, setStatus] = useState<{ kind: "outcome" | "error"; message: string } | null>(
-    null,
-  );
+  const [status, setStatus] = useState<{ kind: "outcome" | "error"; message: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   if (!city) {
@@ -139,7 +137,9 @@ export function CityDetailPanel({ city, lobbyingCost, onLobby }: CityDetailPanel
 
       <form className="lobby-form" onSubmit={handleLobby}>
         <p className="lobby-form-title">{copy.lobbyFormTitle(creditFormat.format(lobbyingCost))}</p>
-        {status && <p className={`form-${status.kind === "error" ? "error" : "status"}`}>{status.message}</p>}
+        {status && (
+          <p className={`form-${status.kind === "error" ? "error" : "status"}`}>{status.message}</p>
+        )}
         <label>
           {copy.lobbyComponentLabel}
           <select

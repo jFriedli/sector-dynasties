@@ -1,4 +1,10 @@
-import type { City, CitySpecialization, GovernmentProfile, PopulationGroup, Sector } from "./simTypes";
+import type {
+  City,
+  CitySpecialization,
+  GovernmentProfile,
+  PopulationGroup,
+  Sector,
+} from "./simTypes";
 
 export interface CityBrowserRow {
   id: number;

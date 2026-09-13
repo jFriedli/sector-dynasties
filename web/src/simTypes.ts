@@ -113,7 +113,8 @@ export interface City {
 // Mirrors sim_core::world::GovernmentComponent. Only these four dimensions
 // are targetable by lobbying today; legislative_strength/
 // judicial_independence are shown read-only until a mechanic reads them.
-export type GovernmentComponent = "federalism" | "franchise" | "economicLiberalism" | "pressFreedom";
+export type GovernmentComponent =
+  "federalism" | "franchise" | "economicLiberalism" | "pressFreedom";
 export type PolicyDirection = "increase" | "decrease";
 
 // Mirrors sim_core::world::GovernmentProfile.
