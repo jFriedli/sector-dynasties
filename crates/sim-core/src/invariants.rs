@@ -21,6 +21,12 @@ pub fn check_invariants(state: &SimState) -> Vec<InvariantViolation> {
                 }
             }
             for country in &planet.countries {
+                if !country.government.is_valid() {
+                    violations.push(InvariantViolation(format!(
+                        "country '{}' has an invalid government profile: {:?}",
+                        country.name, country.government
+                    )));
+                }
                 if !country.social_mobility.is_finite()
                     || !(0.0..=1.0).contains(&country.social_mobility)
                 {
@@ -189,6 +195,26 @@ mod tests {
     fn a_non_finite_recent_output_index_is_caught() {
         let mut state = SimState::new(2);
         state.sector.systems[0].planets[0].countries[0].cities[0].recent_output_index = f64::NAN;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn an_out_of_range_government_component_is_caught() {
+        let mut state = SimState::new(2);
+        state.sector.systems[0].planets[0].countries[0]
+            .government
+            .franchise = 1.5;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_non_finite_government_component_is_caught() {
+        let mut state = SimState::new(2);
+        state.sector.systems[0].planets[0].countries[0]
+            .government
+            .press_freedom = f64::NAN;
         let violations = check_invariants(&state);
         assert!(!violations.is_empty());
     }
