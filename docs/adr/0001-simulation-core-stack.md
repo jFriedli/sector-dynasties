@@ -73,11 +73,18 @@ The hypothesis is confirmed. The bootstrap slice (`crates/sim-core`, `crates/sim
   a `web/dist` built ahead of time by the `frontend` job, not rebuilt on Windows —
   see below for why), and the same shell also compiles and launches without
   crashing under Xvfb on Linux (a sanity check only, not Windows evidence, since
-  this work was done from Kali Linux). What is **not** proven: that the native
-  window, the WebView2-backed webview, or the NSIS installer actually behave
-  correctly when double-clicked on real Windows hardware. Nothing here contradicts
-  the "Windows validation is unverified" gap above; it narrows it from "the whole
-  toolchain" to specifically "runtime UX," tracked as issue #152.
+  this work was done from Kali Linux). Issue #152 subsequently validated commit
+  `ba8d3bb` on Windows 11 25H2 (build 26200.9445, x64): the CI-produced `web-dist`
+  artifact bundled locally with Rust 1.98.1 and MSVC, the NSIS install completed
+  with exit code 0 in current-user mode, and it created the expected app files and
+  Start menu shortcut. The installed native window loaded the frontend through
+  `http://tauri.localhost/` using the already-installed WebView2 runtime
+  (152.0.4191.66). Advancing from year 0 to year 1 and selecting another city both
+  updated the UI without WebView errors. The runtime-download path was not needed
+  on this machine. The installer and installed executable are not Authenticode
+  signed; the locally built installer also had no Mark of the Web, so this pass is
+  not representative of SmartScreen reputation prompts for downloaded releases.
+  Production signing is tracked in issue #161.
 - **Found while building the above: the frontend doesn't typecheck on a
   case-insensitive filesystem.** `web/src` has PascalCase-component/
   camelCase-logic filename pairs (`DynastyPanel.tsx`/`dynastyPanel.ts`,
