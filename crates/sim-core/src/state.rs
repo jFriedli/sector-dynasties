@@ -788,6 +788,56 @@ mod tests {
     }
 
     #[test]
+    fn summary_exposes_pending_event_titles_and_choices() {
+        let mut state = SimState::new(2026);
+        crate::events::scan_for_eligible_events(&mut state);
+
+        let summary = state.summary();
+        let event = summary
+            .pending_events
+            .iter()
+            .find(|event| event.key == "family_seed_money")
+            .expect("founder should have the seed money event pending");
+
+        assert_eq!(event.title, "A relative offers seed money");
+        assert_eq!(event.character_name, "Founder");
+        assert_eq!(
+            event
+                .choices
+                .iter()
+                .map(|choice| (choice.key.as_str(), choice.label.as_str()))
+                .collect::<Vec<_>>(),
+            vec![
+                ("accept", "Accept the money"),
+                ("decline", "Politely decline")
+            ]
+        );
+    }
+
+    #[test]
+    fn resolving_an_event_removes_it_from_the_summary_and_updates_wealth() {
+        let mut state = SimState::new(2026);
+        crate::events::scan_for_eligible_events(&mut state);
+        let pending_id = state
+            .summary()
+            .pending_events
+            .iter()
+            .find(|event| event.key == "family_seed_money")
+            .unwrap()
+            .id;
+        let wealth_before = state.summary().dynasty_wealth;
+
+        state.resolve_event(pending_id, "accept").unwrap();
+        let summary = state.summary();
+
+        assert!(summary
+            .pending_events
+            .iter()
+            .all(|event| event.id != pending_id));
+        assert!(summary.dynasty_wealth > wealth_before);
+    }
+
+    #[test]
     fn same_seed_and_step_count_produce_an_identical_summary() {
         let mut a = SimState::new(2026);
         let mut b = SimState::new(2026);
