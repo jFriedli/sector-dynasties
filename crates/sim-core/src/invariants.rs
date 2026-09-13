@@ -21,6 +21,12 @@ pub fn check_invariants(state: &SimState) -> Vec<InvariantViolation> {
                 }
             }
             for country in &planet.countries {
+                if !country.government.is_valid() {
+                    violations.push(InvariantViolation(format!(
+                        "country '{}' has an invalid government profile: {:?}",
+                        country.name, country.government
+                    )));
+                }
                 if !country.social_mobility.is_finite()
                     || !(0.0..=1.0).contains(&country.social_mobility)
                 {
@@ -241,6 +247,26 @@ mod tests {
                 .any(|v| v.0.contains(&format!("id {child_id}"))),
             "expected a violation naming the corrupted child, got {violations:?}"
         );
+    }
+
+    #[test]
+    fn an_out_of_range_legislative_strength_is_caught() {
+        let mut state = SimState::new(3);
+        state.sector.systems[0].planets[0].countries[0]
+            .government
+            .legislative_strength = 1.5;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_non_finite_judicial_independence_is_caught() {
+        let mut state = SimState::new(4);
+        state.sector.systems[0].planets[0].countries[0]
+            .government
+            .judicial_independence = f64::NAN;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
     }
 
     #[test]

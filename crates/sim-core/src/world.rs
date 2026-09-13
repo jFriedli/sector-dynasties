@@ -143,12 +143,51 @@ pub struct GovernmentProfile {
     pub economic_liberalism: f64,
     /// 0.0 = state/press fully controlled, 1.0 = fully free press.
     pub press_freedom: f64,
+    /// How much real, independent power the legislature holds over the
+    /// executive. `0.0` means the legislature (if one exists at all) is a
+    /// rubber stamp with no ability to check the executive; `1.0` means a
+    /// legislature that can meaningfully block, amend, or remove executive
+    /// action. Independent of `federalism`: a centralized state can still
+    /// have a strong national legislature, and a federal one can still
+    /// have a weak one.
+    #[serde(default = "default_legislative_strength")]
+    pub legislative_strength: f64,
+    /// How independent the judiciary is from the ruling power. `0.0` means
+    /// courts are an arm of the executive/party and rule as directed;
+    /// `1.0` means courts are fully independent and their rulings bind the
+    /// state itself, including the executive.
+    #[serde(default = "default_judicial_independence")]
+    pub judicial_independence: f64,
+}
+
+/// Default for `GovernmentProfile::legislative_strength` on saves predating
+/// this field: the midpoint, neither rubber-stamp nor fully empowered, so
+/// an old save doesn't suddenly snap to either extreme.
+fn default_legislative_strength() -> f64 {
+    0.5
+}
+
+/// Default for `GovernmentProfile::judicial_independence` on saves
+/// predating this field: the midpoint, neither captured nor fully
+/// independent, so an old save doesn't suddenly snap to either extreme.
+fn default_judicial_independence() -> f64 {
+    0.5
 }
 
 impl GovernmentProfile {
     /// A short human-readable label derived from the component values.
     /// This is a placeholder classifier for the bootstrap slice, not a
     /// final taxonomy.
+    ///
+    /// `franchise` and `press_freedom` don't feed this label, same as
+    /// before this dimension was added: they describe who gets a say and
+    /// how freely they can speak, not the structural shape a name like
+    /// "Federal Market Republic" is trying to capture. `legislative_strength`
+    /// and `judicial_independence` do feed it, because a government with
+    /// neither a legislature that can check the executive nor a judiciary
+    /// independent of it has no real institutional constraint on power,
+    /// regardless of how it distributes authority or runs its economy, and
+    /// calling that a "Republic" would be misleading.
     pub fn display_name(&self) -> String {
         let structure = if self.federalism > 0.5 {
             "Federal"
@@ -160,7 +199,28 @@ impl GovernmentProfile {
         } else {
             "Planned"
         };
-        format!("{structure} {economy} Republic")
+        let regime = if self.legislative_strength < 0.35 && self.judicial_independence < 0.35 {
+            "Autocracy"
+        } else {
+            "Republic"
+        };
+        format!("{structure} {economy} {regime}")
+    }
+
+    /// Every component is a finite fraction in `[0.0, 1.0]`. See
+    /// `invariants::check_invariants`, which calls this for every country
+    /// in the sector.
+    pub fn is_valid(&self) -> bool {
+        [
+            self.federalism,
+            self.franchise,
+            self.economic_liberalism,
+            self.press_freedom,
+            self.legislative_strength,
+            self.judicial_independence,
+        ]
+        .iter()
+        .all(|v| v.is_finite() && (0.0..=1.0).contains(v))
     }
 }
 
@@ -263,5 +323,70 @@ impl PopulationGroup {
         self.average_wealth.is_finite()
             && self.average_wealth >= 0.0
             && (0.0..=1.0).contains(&self.unemployment_rate)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn valid_profile() -> GovernmentProfile {
+        GovernmentProfile {
+            federalism: 0.5,
+            franchise: 0.5,
+            economic_liberalism: 0.5,
+            press_freedom: 0.5,
+            legislative_strength: 0.5,
+            judicial_independence: 0.5,
+        }
+    }
+
+    #[test]
+    fn a_midpoint_government_profile_is_valid() {
+        assert!(valid_profile().is_valid());
+    }
+
+    #[test]
+    fn an_out_of_range_legislative_strength_is_invalid() {
+        let mut profile = valid_profile();
+        profile.legislative_strength = 1.5;
+        assert!(!profile.is_valid());
+    }
+
+    #[test]
+    fn a_non_finite_judicial_independence_is_invalid() {
+        let mut profile = valid_profile();
+        profile.judicial_independence = f64::NAN;
+        assert!(!profile.is_valid());
+    }
+
+    #[test]
+    fn weak_legislature_and_captured_courts_is_named_an_autocracy() {
+        let mut profile = valid_profile();
+        profile.federalism = 0.9;
+        profile.economic_liberalism = 0.9;
+        profile.legislative_strength = 0.1;
+        profile.judicial_independence = 0.1;
+        assert_eq!(profile.display_name(), "Federal Market Autocracy");
+    }
+
+    #[test]
+    fn a_strong_legislature_alone_is_still_named_a_republic() {
+        let mut profile = valid_profile();
+        profile.federalism = 0.9;
+        profile.economic_liberalism = 0.9;
+        profile.legislative_strength = 0.9;
+        profile.judicial_independence = 0.1;
+        assert_eq!(profile.display_name(), "Federal Market Republic");
+    }
+
+    #[test]
+    fn an_independent_judiciary_alone_is_still_named_a_republic() {
+        let mut profile = valid_profile();
+        profile.federalism = 0.9;
+        profile.economic_liberalism = 0.9;
+        profile.legislative_strength = 0.1;
+        profile.judicial_independence = 0.9;
+        assert_eq!(profile.display_name(), "Federal Market Republic");
     }
 }
