@@ -292,17 +292,6 @@ impl GovernmentProfile {
         .all(|v| v.is_finite() && (0.0..=1.0).contains(v))
     }
 
-    pub fn is_valid(&self) -> bool {
-        self.federalism.is_finite()
-            && (0.0..=1.0).contains(&self.federalism)
-            && self.franchise.is_finite()
-            && (0.0..=1.0).contains(&self.franchise)
-            && self.economic_liberalism.is_finite()
-            && (0.0..=1.0).contains(&self.economic_liberalism)
-            && self.press_freedom.is_finite()
-            && (0.0..=1.0).contains(&self.press_freedom)
-    }
-
     pub fn component_value(&self, component: GovernmentComponent) -> f64 {
         match component {
             GovernmentComponent::Federalism => self.federalism,
