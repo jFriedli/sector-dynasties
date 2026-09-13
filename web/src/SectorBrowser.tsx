@@ -1,4 +1,6 @@
+import { Orbit } from "lucide-react";
 import { copy } from "./content/copy";
+import { ResourceTagIcon, SpecializationIcon } from "./gameIcons";
 import { cityRowsFromSector, specializationLabel, totalTreasury } from "./sectorBrowser";
 import type { Sector } from "./simTypes";
 
@@ -40,13 +42,25 @@ export function SectorBrowser({ sector, selectedCityId, onSelectCity }: SectorBr
         {sector.systems.map((system) => (
           <details className="system-panel" key={system.id} open>
             <summary>
-              <span>{system.name}</span>
+              <span className="icon-label">
+                <Orbit size={18} aria-hidden="true" />
+                {system.name}
+              </span>
               <span>{copy.planetsCount(system.planets.length)}</span>
             </summary>
             <div className="planet-list">
               {system.planets.map((planet) => (
                 <article className="planet-panel" key={planet.id}>
-                  <h3>{planet.name}</h3>
+                  <h3 className="icon-label">
+                    {planet.name}
+                    <span className="resource-tags">
+                      {planet.resource_tags.map((tag) => (
+                        <span className="resource-tag-badge" key={tag} title={tag}>
+                          <ResourceTagIcon tag={tag} />
+                        </span>
+                      ))}
+                    </span>
+                  </h3>
                   <div className="country-list">
                     {planet.countries.map((country) => (
                       <section className="country-panel" key={country.id}>
@@ -68,7 +82,10 @@ export function SectorBrowser({ sector, selectedCityId, onSelectCity }: SectorBr
                                   onClick={() => onSelectCity(city.id)}
                                 >
                                   <span>{city.name}</span>
-                                  <span>{specializationLabel(city.specialization)}</span>
+                                  <span className="icon-label">
+                                    <SpecializationIcon specialization={city.specialization} />
+                                    {specializationLabel(city.specialization)}
+                                  </span>
                                 </button>
                                 <dl>
                                   <div>

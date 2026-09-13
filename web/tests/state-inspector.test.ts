@@ -24,6 +24,10 @@ const SUMMARY: StateSummary = {
     { domain: "economy", fingerprint: "deadbeefcafef00d" },
     { domain: "worldgen", fingerprint: "0badf00d12345678" },
   ],
+  pending_events: [],
+  businesses: [],
+  trade_routes: [],
+  careers: [],
 };
 
 const SNAPSHOT: SimStateSnapshot = {

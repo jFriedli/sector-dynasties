@@ -16,6 +16,10 @@ const summary: StateSummary = {
     { id: 2, name: "B", age_years: 18, alive: true, role: "Member" },
   ],
   rng_domains: [],
+  pending_events: [],
+  businesses: [],
+  trade_routes: [],
+  careers: [],
 };
 
 const snapshot: SimStateSnapshot = {

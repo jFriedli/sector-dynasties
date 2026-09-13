@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Crown, Skull, User } from "lucide-react";
 import { copy } from "./content/copy";
 import { dynastyMemberRows } from "./dynastyPanel";
 import type { DynastyMemberSummary } from "./simTypes";
@@ -40,11 +41,22 @@ export function DynastyPanel({ members, selectedMemberId = null }: DynastyPanelP
               .join(" ")}
             key={member.id}
           >
-            <div className="dynasty-member-identity">
-              <span className="dynasty-member-name">{member.name}</span>
-              <span className="dynasty-member-role">
-                {member.role === "Head" ? copy.dynastyRoleHead : copy.dynastyRoleMember}
+            <div className="dynasty-member-identity-group">
+              <span className="dynasty-member-icon" aria-hidden="true">
+                {!member.alive ? (
+                  <Skull size={20} />
+                ) : member.role === "Head" ? (
+                  <Crown size={20} />
+                ) : (
+                  <User size={20} />
+                )}
               </span>
+              <div className="dynasty-member-identity">
+                <span className="dynasty-member-name">{member.name}</span>
+                <span className="dynasty-member-role">
+                  {member.role === "Head" ? copy.dynastyRoleHead : copy.dynastyRoleMember}
+                </span>
+              </div>
             </div>
             <div className="dynasty-member-status">
               <span>{copy.dynastyAge(member.ageYears)}</span>

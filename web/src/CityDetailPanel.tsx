@@ -1,4 +1,5 @@
 import { copy } from "./content/copy";
+import { SpecializationIcon } from "./gameIcons";
 import { specializationLabel, type CityDetail } from "./sectorBrowser";
 
 const numberFormat = new Intl.NumberFormat("en-US");
@@ -36,7 +37,10 @@ export function CityDetailPanel({ city }: CityDetailPanelProps) {
       <dl className="detail-stats">
         <div>
           <dt>{copy.citySpecializationLabel}</dt>
-          <dd>{specializationLabel(city.specialization)}</dd>
+          <dd className="icon-label">
+            <SpecializationIcon specialization={city.specialization} />
+            {specializationLabel(city.specialization)}
+          </dd>
         </div>
         <div>
           <dt>{copy.cityPopulationLabel}</dt>

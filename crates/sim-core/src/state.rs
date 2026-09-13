@@ -359,6 +359,10 @@ impl SimState {
             dynasty_wealth: self.dynasty.total_wealth(),
             dynasty_members: self.dynasty.member_summaries(),
             rng_domains: self.rng_domain_summaries(),
+            pending_events: crate::views::pending_event_views(self),
+            businesses: crate::views::business_views(self),
+            trade_routes: crate::views::trade_route_views(self),
+            careers: crate::views::career_views(self),
         }
     }
 
@@ -428,6 +432,12 @@ pub struct StateSummary {
     pub dynasty_wealth: f64,
     pub dynasty_members: Vec<DynastyMemberSummary>,
     pub rng_domains: Vec<RngDomainSummary>,
+    /// Decisions currently awaiting the player, ready to render as a card.
+    /// See `views::pending_event_views`.
+    pub pending_events: Vec<crate::views::PendingEventView>,
+    pub businesses: Vec<crate::views::BusinessView>,
+    pub trade_routes: Vec<crate::views::TradeRouteView>,
+    pub careers: Vec<crate::views::CareerView>,
 }
 
 #[cfg(test)]

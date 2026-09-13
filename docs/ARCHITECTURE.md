@@ -86,6 +86,13 @@ If you find yourself writing a game rule (a formula, a threshold, a decision) in
   far, just `economy_rng`). Also owns save/load (`to_json`/`from_json`) and
   `StateSummary`, a compact view for UI/CLI callers that don't want to walk the full
   hierarchy.
+- `views.rs` — read-only UI projections attached to `StateSummary`
+  (`PendingEventView`, `BusinessView`, `TradeRouteView`, `CareerView`): each joins a
+  raw entity with the names/titles a screen needs (a business's host city name, a
+  pending event's title and choices from `events::definition`) so the frontend never
+  re-implements a `Sector`/`Dynasty` lookup or mirrors event catalog content. Add a
+  view here, not a duplicate lookup in `web/`, whenever a new entity needs to reach a
+  screen.
 
 ## Simulation time
 
@@ -163,6 +170,16 @@ issues `#101`-`#103` for the packaging spikes.
 rebuild it after touching `sim-core` or `sim-wasm`. `web/src/content/` holds every
 player-facing string so the copy lint (`web/tests/copy-lint.test.ts`) can scan them
 in one place; see `docs/CONTENT_GUIDE.md`.
+
+`App.tsx` is a game shell, not a single scrolling dashboard: `Nav.tsx` switches
+between four screens (Galaxy, Dynasty, Economy, Events), each its own component
+(`SectorBrowser`/`CityDetailPanel`, `DynastyPanel`, `EconomyView`, `EventsView`). A
+mutating wasm call (`stepDays`, `resolveEvent`, `foundBusiness`, `lobbyPolicy`) is
+always followed by re-reading both `summary_json()` and `to_json()` through the
+shared `refreshFrom` helper in `App.tsx`, never a partial update. Icons come from
+`lucide-react` (see `ASSET_CREDITS.md`); `gameIcons.tsx` centralizes the
+specialization/resource-tag mappings so a city or planet always uses the same icon
+everywhere it appears.
 
 ## Adding a new hierarchy level or entity
 

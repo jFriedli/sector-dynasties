@@ -29,6 +29,8 @@
 //! `Dynasty::total_wealth` already sums, so this reference is the concrete
 //! link to "the owning dynasty's wealth" until dynasties get their own id.
 
+use std::str::FromStr;
+
 use serde::{Deserialize, Serialize};
 
 use crate::dynasty::Dynasty;
@@ -80,6 +82,22 @@ fn labor_cost_fraction(base_labor_cost_fraction: f64, union_power: f64) -> f64 {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BusinessArchetype {
     Mining,
+}
+
+/// Failure parsing a [`BusinessArchetype`] from a string (the wasm bridge's
+/// only caller, since UI callers pass a plain string across the boundary).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ParseBusinessArchetypeError;
+
+impl FromStr for BusinessArchetype {
+    type Err = ParseBusinessArchetypeError;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "Mining" | "mining" => Ok(Self::Mining),
+            _ => Err(ParseBusinessArchetypeError),
+        }
+    }
 }
 
 impl BusinessArchetype {

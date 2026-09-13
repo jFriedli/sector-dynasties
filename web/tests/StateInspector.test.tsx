@@ -22,6 +22,10 @@ const SUMMARY: StateSummary = {
   dynasty_wealth: 500,
   dynasty_members: [{ id: 1, name: "Founder Meridian", age_years: 34, alive: true, role: "Head" }],
   rng_domains: [{ domain: "economy", fingerprint: "deadbeefcafef00d" }],
+  pending_events: [],
+  businesses: [],
+  trade_routes: [],
+  careers: [],
 };
 
 const SNAPSHOT: SimStateSnapshot = {

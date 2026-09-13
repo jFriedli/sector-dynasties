@@ -3,6 +3,7 @@
 //! decision belongs here instead of in `sim-core`, that's a bug: the UI
 //! must not carry authoritative game rules.
 
+use sim_core::business::BusinessArchetype;
 use sim_core::world::{GovernmentComponent, PolicyDirection};
 use sim_core::SimState as CoreState;
 use wasm_bindgen::prelude::*;
@@ -44,6 +45,33 @@ impl SimHandle {
             .lobby_policy(country_id, component, direction)
             .map_err(|e| JsError::new(&format!("{e:?}")))?;
         serde_json::to_string(&outcome).map_err(|e| JsError::new(&e.to_string()))
+    }
+
+    /// Apply the player's chosen effect for a pending event (see
+    /// `StateSummary::pending_events`), then remove it and log it.
+    #[wasm_bindgen(js_name = resolveEvent)]
+    pub fn resolve_event(&mut self, pending_id: u32, choice_key: &str) -> Result<(), JsError> {
+        self.inner
+            .resolve_event(pending_id, choice_key)
+            .map_err(|e| JsError::new(&format!("{e:?}")))
+    }
+
+    /// Found a new business of `archetype` (currently only `"Mining"`),
+    /// owned by the dynasty head, hosted in the city with id
+    /// `host_city_id`. Returns the new business's id.
+    #[wasm_bindgen(js_name = foundBusiness)]
+    pub fn found_business(
+        &mut self,
+        name: String,
+        archetype: &str,
+        host_city_id: u32,
+    ) -> Result<u32, JsError> {
+        let archetype = archetype
+            .parse::<BusinessArchetype>()
+            .map_err(|_| JsError::new("unknown business archetype"))?;
+        self.inner
+            .found_business(name, archetype, host_city_id)
+            .map_err(|e| JsError::new(&format!("{e:?}")))
     }
 
     /// Returns a JSON-serialized `StateSummary`. Kept as a JSON string
