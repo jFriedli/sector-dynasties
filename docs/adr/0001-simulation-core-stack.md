@@ -64,13 +64,25 @@ The hypothesis is confirmed. The bootstrap slice (`crates/sim-core`, `crates/sim
   existing `web/dist` static build. What's actually proven: the config, generated
   icons, and Rust shell compile and produce an NSIS-targeted bundle on GitHub's
   `windows-latest` CI runner (`.github/workflows/ci.yml`'s `windows-tauri` job
-  running `npx tauri build`), and the same shell also compiles and launches without
-  crashing under Xvfb on Linux (a sanity check only, not Windows evidence, since this
-  work was done from Kali Linux). What is **not** proven: that the native window,
-  the WebView2-backed webview, or the NSIS installer actually behave correctly when
-  double-clicked on real Windows hardware. Nothing here contradicts the "Windows
-  validation is unverified" gap above; it narrows it from "the whole toolchain" to
-  specifically "runtime UX," tracked as a follow-up issue linked from the PR.
+  running `npx tauri build` against a `web/dist` built ahead of time by the
+  `frontend` job, not rebuilt on Windows — see below), and the same shell also
+  compiles and launches without crashing under Xvfb on Linux (a sanity check only,
+  not Windows evidence, since this work was done from Kali Linux). What is **not**
+  proven: that the native window, the WebView2-backed webview, or the NSIS
+  installer actually behave correctly when double-clicked on real Windows
+  hardware. Nothing here contradicts the "Windows validation is unverified" gap
+  above; it narrows it from "the whole toolchain" to specifically "runtime UX,"
+  tracked as issue #152.
+- **Found while building the above: the frontend doesn't typecheck on a
+  case-insensitive filesystem.** `web/src` has PascalCase-component/
+  camelCase-logic filename pairs (`DynastyPanel.tsx`/`dynastyPanel.ts`,
+  `GlobalSearch.tsx`/`globalSearch.ts`, `SectorBrowser.tsx`/`sectorBrowser.ts`,
+  `StateInspector.tsx`/`stateInspector.ts`) that only collide under `tsc -b` on
+  Windows/macOS, not Linux, which is why this had never surfaced in CI before
+  (the `frontend` job only ever ran on `ubuntu-latest`). #103 works around it in
+  its own CI job (consume a pre-built dist rather than rebuild the frontend on
+  Windows) rather than fixing it, since the fix is a cross-cutting rename that
+  touches several other features' files; see issue #158.
 
 ## Alternatives considered
 

@@ -5,11 +5,13 @@
 // a webview pointed at the frontend that already ships to the browser.
 //
 // What's verified: this crate and tauri.conf.json compile and bundle (NSIS)
-// on GitHub's windows-latest CI runner (see .github/workflows/ci.yml's
-// windows-tauri job) and compile-and-launch-without-crashing under Xvfb on
-// Linux (a sanity check only). What's NOT verified: real Windows runtime
-// behavior (the actual window, WebView2, and installer double-click UX).
-// See issue #152 for that real-hardware follow-up.
+// on GitHub's windows-latest CI runner, against a web/dist built ahead of
+// time on Linux (see .github/workflows/ci.yml's windows-tauri job, and
+// issue #158 for why it doesn't rebuild the frontend on Windows itself). It
+// also compiles and launches without crashing under Xvfb on Linux (a
+// sanity check only). What's NOT verified: real Windows runtime behavior
+// (the actual window, WebView2, and installer double-click UX). See issue
+// #152 for that real-hardware follow-up.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {

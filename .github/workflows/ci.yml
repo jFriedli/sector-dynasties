@@ -44,6 +44,16 @@ jobs:
   windows-tauri:
     name: Windows Tauri packaging spike (build)
     runs-on: windows-latest
+    # Consumes the frontend job's already-built web/dist (see its "upload
+    # dist for windows-tauri" step) instead of rebuilding the frontend here.
+    # web/src has a few PascalCase-component/camelCase-logic filename pairs
+    # (e.g. DynastyPanel.tsx/dynastyPanel.ts) that only collide under a
+    # case-insensitive filesystem, which breaks `tsc -b` on windows-latest;
+    # see issue #158, unrelated to and not fixed by this spike. Building
+    # the frontend only once, on Linux, keeps this job's scope to exactly
+    # what issue #103 is validating: does the Tauri shell/config/icons
+    # compile and bundle on a real Windows toolchain.
+    needs: frontend
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -53,14 +63,10 @@ jobs:
         with:
           workspaces: |
             web/src-tauri -> target
-      - name: install wasm-pack
-        # Not the curl/iwr installer script the other jobs use: its Windows
-        # (.ps1) endpoint currently 404s (confirmed via this job failing),
-        # unlike the Unix (.sh) one the frontend job still relies on. `cargo
-        # install` is slower here but doesn't depend on that installer's
-        # continued existence, and the binary lands in ~/.cargo/bin, which
-        # Swatinem/rust-cache above already caches.
-        run: cargo install wasm-pack --locked
+      - uses: actions/download-artifact@v4
+        with:
+          name: web-dist
+          path: web/dist
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -70,16 +76,20 @@ jobs:
         working-directory: web
         run: npm ci
       - name: tauri build (nsis, Windows target only)
-        # beforeBuildCommand in web/src-tauri/tauri.conf.json builds the wasm
-        # bridge and the static frontend before the native shell is compiled
-        # and bundled. This is issue #103's actual validation evidence: a
-        # green run here proves the Tauri config, icons, and Rust shell
-        # compile and bundle on a real Windows toolchain. It does not prove
-        # the resulting window/installer behaves correctly at runtime on
-        # Windows; that still needs a human on real hardware, tracked in
-        # issue #152.
+        # Overrides tauri.conf.json's beforeBuildCommand (npm run build:wasm
+        # && npm run build) to a no-op: web/dist already exists, downloaded
+        # above, so there is nothing to build before the native shell. This
+        # job's build/bundle of that shell is issue #103's actual validation
+        # evidence: a green run here proves the Tauri config, icons, and
+        # Rust shell compile and bundle (NSIS) on a real Windows toolchain.
+        # It does not prove the resulting window/installer behaves correctly
+        # at runtime on Windows; that still needs a human on real hardware,
+        # tracked in issue #152.
         working-directory: web
-        run: npx tauri build
+        # bash (Git for Windows), not the runner's default pwsh, so the
+        # double-quote escaping in --config below is unambiguous.
+        shell: bash
+        run: npx tauri build --config "{\"build\":{\"beforeBuildCommand\":null}}"
 
   frontend:
     name: Frontend (lint, typecheck, test, build)
@@ -119,3 +129,9 @@ jobs:
       - name: build
         working-directory: web
         run: npm run build
+      - name: upload dist for windows-tauri
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: web/dist
+          retention-days: 1
