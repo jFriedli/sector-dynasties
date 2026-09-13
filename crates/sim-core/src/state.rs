@@ -20,11 +20,13 @@ use crate::rng::{RngDomainSummary, SimRng};
 use crate::save::{load_and_migrate, SaveError};
 use crate::time::SimClock;
 use crate::traits;
-use crate::world::{EntityId, Sector};
+use crate::world::{EntityId, GovernmentComponent, PolicyDirection, Sector};
 use crate::worldgen::generate_sector;
 
 pub const SAVE_SCHEMA_VERSION: u32 = 1;
 const STARTING_SYSTEM_COUNT: u32 = 3;
+pub const LOBBYING_WEALTH_COST: f64 = 750.0;
+pub const POLICY_LOBBYING_SHIFT: f64 = 0.05;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SimState {
@@ -188,6 +190,54 @@ impl SimState {
         Ok(())
     }
 
+    /// Spend the dynasty head's wealth to nudge one component of a
+    /// country's government profile. This is deterministic and uses fixed
+    /// constants: no abstract influence pool, no hidden random roll.
+    pub fn lobby_policy(
+        &mut self,
+        country_id: EntityId,
+        component: GovernmentComponent,
+        direction: PolicyDirection,
+    ) -> Result<LobbyingOutcome, LobbyingError> {
+        if self.sector.find_country(country_id).is_none() {
+            return Err(LobbyingError::UnknownCountry(country_id));
+        }
+
+        let head_index = self
+            .dynasty
+            .members
+            .iter()
+            .position(|character| character.id == self.dynasty.head_character_id && character.alive)
+            .ok_or(LobbyingError::HeadUnavailable)?;
+
+        let available_wealth = self.dynasty.members[head_index].wealth;
+        if available_wealth < LOBBYING_WEALTH_COST {
+            return Err(LobbyingError::InsufficientWealth {
+                available: available_wealth,
+                required: LOBBYING_WEALTH_COST,
+            });
+        }
+
+        let country = self
+            .sector
+            .find_country_mut(country_id)
+            .expect("country existence was checked before mutating");
+        let (before, after) =
+            country
+                .government
+                .shift_component(component, direction, POLICY_LOBBYING_SHIFT);
+        self.dynasty.members[head_index].wealth -= LOBBYING_WEALTH_COST;
+
+        Ok(LobbyingOutcome {
+            country_id,
+            component,
+            direction,
+            wealth_spent: LOBBYING_WEALTH_COST,
+            before,
+            after,
+        })
+    }
+
     /// Advance the simulation by one day. Lower-frequency systems check the
     /// clock rather than running every call.
     pub fn step_one_day(&mut self) {
@@ -290,6 +340,23 @@ impl SimState {
     }
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct LobbyingOutcome {
+    pub country_id: EntityId,
+    pub component: GovernmentComponent,
+    pub direction: PolicyDirection,
+    pub wealth_spent: f64,
+    pub before: f64,
+    pub after: f64,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum LobbyingError {
+    UnknownCountry(EntityId),
+    HeadUnavailable,
+    InsufficientWealth { available: f64, required: f64 },
+}
+
 /// A compact, UI/CLI-friendly view of the state, so callers don't need to
 /// walk the full hierarchy just to show a status line.
 ///
@@ -358,6 +425,158 @@ mod tests {
         let result = state.grant_favor(999_999, 888_888, 1.0);
 
         assert!(result.is_err());
+        assert_eq!(state.to_json(), before);
+    }
+
+    fn first_country_id(state: &SimState) -> EntityId {
+        state
+            .sector
+            .systems
+            .first()
+            .and_then(|system| system.planets.first())
+            .and_then(|planet| planet.countries.first())
+            .map(|country| country.id)
+            .expect("generated state should contain at least one country")
+    }
+
+    #[test]
+    fn lobbying_spends_head_wealth_and_shifts_the_named_policy_component() {
+        let mut state = SimState::new(2026);
+        let country_id = first_country_id(&state);
+        let wealth_before = state.dynasty.head().unwrap().wealth;
+        let federalism_before = state
+            .sector
+            .find_country(country_id)
+            .unwrap()
+            .government
+            .federalism;
+        let franchise_before = state
+            .sector
+            .find_country(country_id)
+            .unwrap()
+            .government
+            .franchise;
+
+        let outcome = state
+            .lobby_policy(
+                country_id,
+                GovernmentComponent::Federalism,
+                PolicyDirection::Increase,
+            )
+            .expect("founder should be able to afford one lobbying action");
+
+        let head = state.dynasty.head().unwrap();
+        let government = &state.sector.find_country(country_id).unwrap().government;
+        assert_eq!(head.wealth, wealth_before - LOBBYING_WEALTH_COST);
+        assert_eq!(
+            government.federalism,
+            (federalism_before + POLICY_LOBBYING_SHIFT).clamp(0.0, 1.0)
+        );
+        assert_eq!(outcome.wealth_spent, LOBBYING_WEALTH_COST);
+        assert_eq!(outcome.before, federalism_before);
+        assert_eq!(outcome.after, government.federalism);
+        assert_eq!(government.franchise, franchise_before);
+        assert!(check_invariants(&state).is_empty());
+    }
+
+    #[test]
+    fn lobbying_the_same_policy_on_same_seed_states_is_deterministic() {
+        fn run(seed: u64) -> String {
+            let mut state = SimState::new(seed);
+            let country_id = first_country_id(&state);
+            state
+                .lobby_policy(
+                    country_id,
+                    GovernmentComponent::PressFreedom,
+                    PolicyDirection::Decrease,
+                )
+                .unwrap();
+            state.step_days(200);
+            state.to_json()
+        }
+
+        assert_eq!(run(2026), run(2026));
+    }
+
+    #[test]
+    fn lobbying_clamps_the_policy_component_at_the_boundary() {
+        let mut state = SimState::new(2026);
+        let country_id = first_country_id(&state);
+        state
+            .sector
+            .find_country_mut(country_id)
+            .unwrap()
+            .government
+            .press_freedom = 0.98;
+
+        let outcome = state
+            .lobby_policy(
+                country_id,
+                GovernmentComponent::PressFreedom,
+                PolicyDirection::Increase,
+            )
+            .unwrap();
+
+        assert_eq!(outcome.before, 0.98);
+        assert_eq!(outcome.after, 1.0);
+        assert_eq!(
+            state
+                .sector
+                .find_country(country_id)
+                .unwrap()
+                .government
+                .press_freedom,
+            1.0
+        );
+        assert!(check_invariants(&state).is_empty());
+    }
+
+    #[test]
+    fn lobbying_an_unknown_country_is_refused_and_leaves_state_untouched() {
+        let mut state = SimState::new(2026);
+        let before = state.to_json();
+
+        let err = state
+            .lobby_policy(
+                999_999,
+                GovernmentComponent::Franchise,
+                PolicyDirection::Increase,
+            )
+            .expect_err("unknown country should be refused");
+
+        assert_eq!(err, LobbyingError::UnknownCountry(999_999));
+        assert_eq!(state.to_json(), before);
+    }
+
+    #[test]
+    fn lobbying_without_enough_head_wealth_is_refused_and_leaves_state_untouched() {
+        let mut state = SimState::new(2026);
+        let country_id = first_country_id(&state);
+        let head_id = state.dynasty.head_character_id;
+        state
+            .dynasty
+            .members
+            .iter_mut()
+            .find(|character| character.id == head_id)
+            .unwrap()
+            .wealth = LOBBYING_WEALTH_COST - 1.0;
+        let before = state.to_json();
+
+        let err = state
+            .lobby_policy(
+                country_id,
+                GovernmentComponent::EconomicLiberalism,
+                PolicyDirection::Decrease,
+            )
+            .expect_err("unaffordable lobbying should be refused");
+
+        assert_eq!(
+            err,
+            LobbyingError::InsufficientWealth {
+                available: LOBBYING_WEALTH_COST - 1.0,
+                required: LOBBYING_WEALTH_COST,
+            }
+        );
         assert_eq!(state.to_json(), before);
     }
 

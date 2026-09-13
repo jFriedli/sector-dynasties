@@ -3,6 +3,7 @@
 //! decision belongs here instead of in `sim-core`, that's a bug: the UI
 //! must not carry authoritative game rules.
 
+use sim_core::world::{GovernmentComponent, PolicyDirection};
 use sim_core::SimState as CoreState;
 use wasm_bindgen::prelude::*;
 
@@ -22,6 +23,27 @@ impl SimHandle {
 
     pub fn step_days(&mut self, days: u32) {
         self.inner.step_days(days);
+    }
+
+    #[wasm_bindgen(js_name = lobbyPolicy)]
+    pub fn lobby_policy(
+        &mut self,
+        country_id: u32,
+        component: &str,
+        direction: &str,
+    ) -> Result<String, JsError> {
+        let component = component
+            .parse::<GovernmentComponent>()
+            .map_err(|_| JsError::new("unknown government component"))?;
+        let direction = direction
+            .parse::<PolicyDirection>()
+            .map_err(|_| JsError::new("unknown policy direction"))?;
+
+        let outcome = self
+            .inner
+            .lobby_policy(country_id, component, direction)
+            .map_err(|e| JsError::new(&format!("{e:?}")))?;
+        serde_json::to_string(&outcome).map_err(|e| JsError::new(&e.to_string()))
     }
 
     /// Returns a JSON-serialized `StateSummary`. Kept as a JSON string
