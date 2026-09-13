@@ -12,6 +12,7 @@ pub mod career_ai;
 pub mod culture;
 pub mod dynasty;
 pub mod economy;
+pub mod events;
 pub mod favor;
 pub mod history;
 pub mod invariants;
