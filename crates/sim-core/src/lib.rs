@@ -23,6 +23,7 @@ pub mod rng;
 pub mod save;
 pub mod state;
 pub mod time;
+pub mod trade;
 pub mod traits;
 pub mod world;
 pub mod worldgen;

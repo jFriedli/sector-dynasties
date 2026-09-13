@@ -19,6 +19,7 @@ use crate::portrait::PortraitDescriptor;
 use crate::rng::{RngDomainSummary, SimRng};
 use crate::save::{load_and_migrate, SaveError};
 use crate::time::SimClock;
+use crate::trade::{self, TradeRoute};
 use crate::traits;
 use crate::world::{EntityId, GovernmentComponent, PolicyDirection, Sector};
 use crate::worldgen::generate_sector;
@@ -54,6 +55,13 @@ pub struct SimState {
     /// `career::promotion_chance_with_favors`.
     #[serde(default)]
     pub favors: Vec<Favor>,
+    /// Trade routes connecting two cities each, generated once at sector
+    /// creation (see `trade::generate_trade_routes`). Empty on a save from
+    /// before trade routes existed. This is the foundation issue #57 lays
+    /// down for multiple transport modes (#58), tariffs (#59), and a
+    /// logistics business archetype (#60) to build on.
+    #[serde(default)]
+    pub trade_routes: Vec<TradeRoute>,
     economy_rng: SimRng,
     mortality_rng: SimRng,
     /// Placeholder domain on a save from before careers existed: no
@@ -86,6 +94,12 @@ impl SimState {
     /// or duplicate the founding routine.
     pub fn new_with_system_count(seed: u64, system_count: u32) -> Self {
         let sector = generate_sector(seed, system_count);
+        // A one-shot stream: trade route generation runs exactly once, at
+        // sector creation, and never needs to be replayed while resuming a
+        // save, so this stream (unlike `economy_rng`/`mortality_rng`/
+        // `career_rng` below) isn't persisted on `SimState`.
+        let mut trade_rng = SimRng::from_seed(seed, "worldgen:trade");
+        let trade_routes = trade::generate_trade_routes(&mut trade_rng, &sector);
         let mut character_rng = SimRng::from_seed(seed, "dynasty");
 
         let home_city = sector
@@ -123,6 +137,7 @@ impl SimState {
             businesses: Vec::new(),
             careers: Vec::new(),
             favors: Vec::new(),
+            trade_routes,
             economy_rng: SimRng::from_seed(seed, "economy"),
             mortality_rng: SimRng::from_seed(seed, "dynasty:mortality"),
             career_rng: SimRng::from_seed(seed, "career"),
@@ -683,6 +698,17 @@ mod tests {
     fn new_with_system_count_respects_the_requested_count() {
         let state = SimState::new_with_system_count(7, 5);
         assert_eq!(state.sector.systems.len(), 5);
+    }
+
+    #[test]
+    fn a_new_state_starts_with_at_least_a_few_deterministic_trade_routes() {
+        let a = SimState::new(2026);
+        let b = SimState::new(2026);
+        assert!(
+            !a.trade_routes.is_empty(),
+            "expected worldgen to generate at least a few trade routes"
+        );
+        assert_eq!(a.trade_routes, b.trade_routes);
     }
 
     #[test]

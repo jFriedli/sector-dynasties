@@ -138,6 +138,27 @@ pub fn check_invariants(state: &SimState) -> Vec<InvariantViolation> {
         }
     }
 
+    for route in &state.trade_routes {
+        if !route.is_valid() {
+            violations.push(InvariantViolation(format!(
+                "trade route (id {}) has an invalid field: {route:?}",
+                route.id
+            )));
+        }
+        if state.sector.find_city(route.city_a_id).is_none() {
+            violations.push(InvariantViolation(format!(
+                "trade route (id {}) city_a_id {} does not reference an existing city",
+                route.id, route.city_a_id
+            )));
+        }
+        if state.sector.find_city(route.city_b_id).is_none() {
+            violations.push(InvariantViolation(format!(
+                "trade route (id {}) city_b_id {} does not reference an existing city",
+                route.id, route.city_b_id
+            )));
+        }
+    }
+
     for favor in &state.favors {
         if !favor.is_valid() {
             violations.push(InvariantViolation(format!(
@@ -505,6 +526,45 @@ mod tests {
             debtor_id: 999_999,
             magnitude: 1.0,
         });
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_freshly_generated_state_has_no_trade_route_violations() {
+        let state = SimState::new(13);
+        assert!(
+            !state.trade_routes.is_empty(),
+            "expected some generated trade routes"
+        );
+        assert_eq!(check_invariants(&state), Vec::new());
+    }
+
+    #[test]
+    fn a_trade_route_with_a_dangling_endpoint_is_caught() {
+        let mut state = SimState::new(14);
+        assert!(
+            !state.trade_routes.is_empty(),
+            "expected some generated trade routes"
+        );
+        state.trade_routes[0].city_b_id = 999_999;
+        let violations = check_invariants(&state);
+        assert!(
+            violations
+                .iter()
+                .any(|v| v.0.contains("does not reference an existing city")),
+            "expected a violation naming the dangling trade route endpoint, got {violations:?}"
+        );
+    }
+
+    #[test]
+    fn a_trade_route_with_an_out_of_range_reliability_is_caught() {
+        let mut state = SimState::new(15);
+        assert!(
+            !state.trade_routes.is_empty(),
+            "expected some generated trade routes"
+        );
+        state.trade_routes[0].reliability = 1.5;
         let violations = check_invariants(&state);
         assert!(!violations.is_empty());
     }
