@@ -291,13 +291,11 @@ pub fn resolve_pending_event(
     Ok(())
 }
 
-// --- Example events -------------------------------------------------------
+// --- Starter events -------------------------------------------------------
 //
-// Two small, self-contained events proving the framework works end to end:
-// one reads age/career context with a deterministic, non-random effect
-// (family_seed_money), the other reads wealth/career context and rolls a
-// deterministic per-instance outcome (risky_investment_tip). Real content
-// (per `docs/CONTENT_GUIDE.md`) is explicitly out of scope for this issue.
+// These deliberately small events prove the framework with early dynasty
+// situations: family aid, career momentum, personal investment risk, and a
+// new child joining the house.
 
 const FAMILY_SEED_MONEY_ADULT_AGE: u32 = 18;
 const FAMILY_SEED_MONEY_AMOUNT: f64 = 1_000.0;
@@ -380,6 +378,96 @@ fn risky_investment_tip_invest(state: &mut SimState, character_id: EntityId) {
 
 fn risky_investment_tip_decline(_state: &mut SimState, _character_id: EntityId) {}
 
+const CAREER_MILESTONE_MIN_WEEKS: u32 = 52;
+const CAREER_VISIBLE_ASSIGNMENT_BONUS: f64 = 300.0;
+const CAREER_STEADY_CREDIBILITY_BONUS: f64 = 150.0;
+
+fn career_milestone_condition(state: &SimState, character_id: EntityId) -> bool {
+    let Some(character) = state.dynasty.members.iter().find(|c| c.id == character_id) else {
+        return false;
+    };
+    character.alive
+        && state.careers.iter().any(|career| {
+            career.character_id == character_id
+                && (career.level > 0 || career.weeks_at_level >= CAREER_MILESTONE_MIN_WEEKS)
+        })
+}
+
+fn career_milestone_visible_assignment(state: &mut SimState, character_id: EntityId) {
+    if let Some(character) = state
+        .dynasty
+        .members
+        .iter_mut()
+        .find(|c| c.id == character_id)
+    {
+        character.wealth += CAREER_VISIBLE_ASSIGNMENT_BONUS;
+    }
+}
+
+fn career_milestone_quiet_credibility(state: &mut SimState, character_id: EntityId) {
+    if let Some(character) = state
+        .dynasty
+        .members
+        .iter_mut()
+        .find(|c| c.id == character_id)
+    {
+        character.wealth += CAREER_STEADY_CREDIBILITY_BONUS;
+    }
+}
+
+const CHILD_TRUST_AMOUNT: f64 = 500.0;
+const CHILD_HOUSEHOLD_FUNDS_AMOUNT: f64 = 100.0;
+
+fn child_birth_announcement_condition(state: &SimState, character_id: EntityId) -> bool {
+    state.dynasty.members.iter().any(|character| {
+        character.id == character_id && character.alive && character.age_years == 0
+    })
+}
+
+fn transfer_from_head_to_character(state: &mut SimState, character_id: EntityId, amount: f64) {
+    if amount <= 0.0 || state.dynasty.head_character_id == character_id {
+        return;
+    }
+
+    let Some(head_index) = state
+        .dynasty
+        .members
+        .iter()
+        .position(|c| c.id == state.dynasty.head_character_id)
+    else {
+        return;
+    };
+    let Some(character_index) = state
+        .dynasty
+        .members
+        .iter()
+        .position(|c| c.id == character_id)
+    else {
+        return;
+    };
+
+    let (head, character) = if head_index < character_index {
+        let (left, right) = state.dynasty.members.split_at_mut(character_index);
+        (&mut left[head_index], &mut right[0])
+    } else {
+        let (left, right) = state.dynasty.members.split_at_mut(head_index);
+        (&mut right[0], &mut left[character_index])
+    };
+
+    if head.wealth >= amount {
+        head.wealth -= amount;
+        character.wealth += amount;
+    }
+}
+
+fn child_birth_announcement_fund_trust(state: &mut SimState, character_id: EntityId) {
+    transfer_from_head_to_character(state, character_id, CHILD_TRUST_AMOUNT);
+}
+
+fn child_birth_announcement_keep_household_funds(state: &mut SimState, character_id: EntityId) {
+    transfer_from_head_to_character(state, character_id, CHILD_HOUSEHOLD_FUNDS_AMOUNT);
+}
+
 /// Every event definition in the game. Order is fixed and matters for
 /// determinism (see [`scan_for_eligible_events`]); append new entries rather
 /// than reordering existing ones.
@@ -422,6 +510,44 @@ pub const ALL_EVENTS: &[EventDefinition] = &[
         repeatable: true,
         cooldown_years: RISKY_INVESTMENT_COOLDOWN_YEARS,
     },
+    EventDefinition {
+        key: "career_milestone",
+        title: "A career milestone arrives",
+        condition: career_milestone_condition,
+        choices: &[
+            EventChoiceDefinition {
+                key: "visible_assignment",
+                label: "Take a visible assignment",
+                apply: career_milestone_visible_assignment,
+            },
+            EventChoiceDefinition {
+                key: "quiet_credibility",
+                label: "Build quiet credibility",
+                apply: career_milestone_quiet_credibility,
+            },
+        ],
+        repeatable: false,
+        cooldown_years: 0,
+    },
+    EventDefinition {
+        key: "child_birth_announcement",
+        title: "A child joins the house",
+        condition: child_birth_announcement_condition,
+        choices: &[
+            EventChoiceDefinition {
+                key: "fund_trust",
+                label: "Fund a small trust",
+                apply: child_birth_announcement_fund_trust,
+            },
+            EventChoiceDefinition {
+                key: "keep_household_funds",
+                label: "Keep funds with the household",
+                apply: child_birth_announcement_keep_household_funds,
+            },
+        ],
+        repeatable: false,
+        cooldown_years: 0,
+    },
 ];
 
 #[cfg(test)]
@@ -463,9 +589,39 @@ mod tests {
     }
 
     #[test]
+    fn starter_catalog_contains_a_handful_of_playable_events() {
+        assert!(
+            (3..=5).contains(&ALL_EVENTS.len()),
+            "starter catalog should stay focused, got {} events",
+            ALL_EVENTS.len()
+        );
+    }
+
+    #[test]
+    fn event_catalog_player_facing_copy_passes_style_rule() {
+        for def in ALL_EVENTS {
+            assert!(
+                !def.title.contains('—') && !def.title.contains(';'),
+                "event {} title violates player-facing copy style",
+                def.key
+            );
+            for choice in def.choices {
+                assert!(
+                    !choice.label.contains('—') && !choice.label.contains(';'),
+                    "event {} choice {} violates player-facing copy style",
+                    def.key,
+                    choice.key
+                );
+            }
+        }
+    }
+
+    #[test]
     fn definition_looks_up_known_and_unknown_keys() {
         assert!(definition("family_seed_money").is_some());
         assert!(definition("risky_investment_tip").is_some());
+        assert!(definition("career_milestone").is_some());
+        assert!(definition("child_birth_announcement").is_some());
         assert!(definition("does_not_exist").is_none());
     }
 
@@ -613,6 +769,102 @@ mod tests {
         assert_eq!(invest_outcome(2026), invest_outcome(2026));
     }
 
+    // --- career_milestone ---------------------------------------------
+
+    #[test]
+    fn career_milestone_waits_for_career_progress() {
+        let mut state = SimState::new(2026);
+        let home_city = state.dynasty.head().unwrap().home_city.unwrap();
+        let head_id = state.dynasty.head_character_id;
+        state
+            .start_career(CareerTrack::Corporate, head_id, home_city)
+            .unwrap();
+
+        assert!(!career_milestone_condition(&state, head_id));
+        state.careers[0].weeks_at_level = CAREER_MILESTONE_MIN_WEEKS;
+        assert!(career_milestone_condition(&state, head_id));
+    }
+
+    #[test]
+    fn career_milestone_choices_have_distinct_rewards() {
+        fn apply(choice: fn(&mut SimState, EntityId)) -> f64 {
+            let mut state = SimState::new(2026);
+            let head_id = state.dynasty.head_character_id;
+            let before = state.dynasty.head().unwrap().wealth;
+            choice(&mut state, head_id);
+            state.dynasty.head().unwrap().wealth - before
+        }
+
+        assert_eq!(
+            apply(career_milestone_visible_assignment),
+            CAREER_VISIBLE_ASSIGNMENT_BONUS
+        );
+        assert_eq!(
+            apply(career_milestone_quiet_credibility),
+            CAREER_STEADY_CREDIBILITY_BONUS
+        );
+    }
+
+    // --- child_birth_announcement -------------------------------------
+
+    #[test]
+    fn child_birth_announcement_only_targets_living_newborns() {
+        let mut state = SimState::new(2026);
+        let child_id = state.dynasty.members.iter().map(|c| c.id).max().unwrap() + 1;
+        let mut child = state.dynasty.head().unwrap().clone();
+        child.id = child_id;
+        child.name = "Ari".to_string();
+        child.age_years = 0;
+        child.wealth = 0.0;
+        state.dynasty.members.push(child);
+
+        assert!(child_birth_announcement_condition(&state, child_id));
+
+        state
+            .dynasty
+            .members
+            .iter_mut()
+            .find(|c| c.id == child_id)
+            .unwrap()
+            .age_years = 1;
+        assert!(!child_birth_announcement_condition(&state, child_id));
+    }
+
+    #[test]
+    fn child_birth_announcement_choices_transfer_distinct_amounts() {
+        fn apply(choice: fn(&mut SimState, EntityId)) -> (f64, f64) {
+            let mut state = SimState::new(2026);
+            let child_id = state.dynasty.members.iter().map(|c| c.id).max().unwrap() + 1;
+            let mut child = state.dynasty.head().unwrap().clone();
+            child.id = child_id;
+            child.name = "Ari".to_string();
+            child.age_years = 0;
+            child.wealth = 0.0;
+            state.dynasty.members.push(child);
+
+            let head_before = state.dynasty.head().unwrap().wealth;
+            choice(&mut state, child_id);
+            let head_after = state.dynasty.head().unwrap().wealth;
+            let child_after = state
+                .dynasty
+                .members
+                .iter()
+                .find(|c| c.id == child_id)
+                .unwrap()
+                .wealth;
+            (head_before - head_after, child_after)
+        }
+
+        assert_eq!(
+            apply(child_birth_announcement_fund_trust),
+            (CHILD_TRUST_AMOUNT, CHILD_TRUST_AMOUNT)
+        );
+        assert_eq!(
+            apply(child_birth_announcement_keep_household_funds),
+            (CHILD_HOUSEHOLD_FUNDS_AMOUNT, CHILD_HOUSEHOLD_FUNDS_AMOUNT)
+        );
+    }
+
     // --- scan_for_eligible_events --------------------------------------
 
     #[test]
@@ -703,6 +955,23 @@ mod tests {
             .pending_events
             .iter()
             .any(|p| p.key == "risky_investment_tip"));
+    }
+
+    #[test]
+    fn seed_0_surfaces_a_birth_announcement_in_year_1() {
+        let mut state = SimState::new(0);
+
+        state.step_days(crate::time::DAYS_PER_YEAR as u32);
+
+        assert!(state.pending_events.iter().any(|p| {
+            p.key == "child_birth_announcement"
+                && p.raised_year == 1
+                && state
+                    .dynasty
+                    .members
+                    .iter()
+                    .any(|c| c.id == p.character_id && c.age_years == 0)
+        }));
     }
 
     // --- resolve_pending_event -------------------------------------------
