@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { searchGlobally } from "../src/globalSearchLogic";
-import type { DynastyMemberSummary, Sector } from "../src/simTypes";
+import type { BusinessView, DynastyMemberSummary, Sector } from "../src/simTypes";
 
 const members: DynastyMemberSummary[] = [
   { id: 1, name: "Meridia Voss", age_years: 52, alive: true, role: "Head" },
@@ -61,14 +61,33 @@ const sector: Sector = {
   ],
 };
 
+const businesses: BusinessView[] = [
+  {
+    id: 10,
+    name: "Meridian Freight Trust",
+    archetype: "Logistics",
+    host_city_id: 5,
+    host_city_name: "Port Ember",
+    equity: 2500,
+  },
+  {
+    id: 11,
+    name: "Deep Vein Consolidated",
+    archetype: "Mining",
+    host_city_id: 4,
+    host_city_name: "Meridian",
+    equity: 1750,
+  },
+];
+
 describe("global search matching", () => {
   it("returns no results for a blank or whitespace-only query", () => {
-    expect(searchGlobally(sector, members, "")).toEqual([]);
-    expect(searchGlobally(sector, members, "   ")).toEqual([]);
+    expect(searchGlobally(sector, members, businesses, "")).toEqual([]);
+    expect(searchGlobally(sector, members, businesses, "   ")).toEqual([]);
   });
 
   it("matches characters by a case-insensitive substring of their name", () => {
-    const results = searchGlobally(sector, members, "voss");
+    const results = searchGlobally(sector, members, businesses, "voss");
 
     expect(results).toEqual([
       { kind: "character", id: 1, name: "Meridia Voss", role: "Head", alive: true },
@@ -77,7 +96,7 @@ describe("global search matching", () => {
   });
 
   it("matches cities by a case-insensitive substring of their name", () => {
-    const results = searchGlobally(sector, members, "ember");
+    const results = searchGlobally(sector, members, businesses, "ember");
 
     expect(results).toEqual([
       {
@@ -90,29 +109,48 @@ describe("global search matching", () => {
     ]);
   });
 
-  it("matches both characters and cities in one query", () => {
-    const results = searchGlobally(sector, members, "meridi");
+  it("matches businesses by a case-insensitive substring of their name", () => {
+    const results = searchGlobally(sector, members, businesses, "freight");
+
+    expect(results).toEqual([
+      {
+        kind: "business",
+        id: 10,
+        name: "Meridian Freight Trust",
+        archetype: "Logistics",
+        hostCityName: "Port Ember",
+      },
+    ]);
+  });
+
+  it("matches characters, cities, and businesses in one query", () => {
+    const results = searchGlobally(sector, members, businesses, "meridi");
 
     expect(results.map((result) => `${result.kind}:${result.name}`)).toEqual([
       "character:Meridia Voss",
       "character:Meridian Ash",
       "city:Meridian",
+      "business:Meridian Freight Trust",
     ]);
   });
 
   it("ranks an exact name match ahead of a mere prefix match", () => {
-    const results = searchGlobally(sector, members, "meridian");
+    const results = searchGlobally(sector, members, businesses, "meridian");
 
-    expect(results.map((result) => result.name)).toEqual(["Meridian", "Meridian Ash"]);
+    expect(results.map((result) => result.name)).toEqual([
+      "Meridian",
+      "Meridian Ash",
+      "Meridian Freight Trust",
+    ]);
   });
 
   it("returns an empty list when nothing matches", () => {
-    expect(searchGlobally(sector, members, "nonexistent")).toEqual([]);
+    expect(searchGlobally(sector, members, businesses, "nonexistent")).toEqual([]);
   });
 
   it("does not mutate the members it searches", () => {
     const original = [...members];
-    searchGlobally(sector, members, "voss");
+    searchGlobally(sector, members, businesses, "voss");
     expect(members).toEqual(original);
   });
 });

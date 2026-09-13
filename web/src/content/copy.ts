@@ -61,13 +61,16 @@ export const copy = {
   saveStatusLoaded: (savedAt: string) => `Loaded save from ${savedAt}.`,
   saveStatusError: (message: string) => `Save failed. ${message}`,
   globalSearchLabel: "Search",
-  globalSearchPlaceholder: "Search characters and cities",
+  globalSearchPlaceholder: "Search characters, cities, and businesses",
   globalSearchResultsLabel: "Search results",
   globalSearchCharacterKindLabel: "Character",
   globalSearchCityKindLabel: "City",
+  globalSearchBusinessKindLabel: "Business",
   globalSearchCityLocation: (planetName: string, countryName: string) =>
     `${countryName}, ${planetName}`,
-  globalSearchNoResults: (query: string) => `No characters or cities match "${query}".`,
+  globalSearchBusinessHost: (hostCityName: string) => `Hosted in ${hostCityName}`,
+  globalSearchNoResults: (query: string) =>
+    `No characters, cities, or businesses match "${query}".`,
   navGalaxy: "Galaxy",
   navDynasty: "Dynasty",
   navEconomy: "Economy",

@@ -963,6 +963,12 @@ select:focus-visible {
   background: var(--color-surface-muted);
 }
 
+.business-row--selected {
+  border-color: var(--color-primary);
+  border-left-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
 .business-row > div,
 .trade-route-row > div {
   display: grid;

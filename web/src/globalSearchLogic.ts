@@ -1,5 +1,5 @@
 import { cityDetailsFromSector } from "./sectorBrowserLogic";
-import type { DynastyMemberSummary, DynastyRole, Sector } from "./simTypes";
+import type { BusinessView, DynastyMemberSummary, DynastyRole, Sector } from "./simTypes";
 
 export interface CharacterSearchResult {
   kind: "character";
@@ -17,7 +17,15 @@ export interface CitySearchResult {
   countryName: string;
 }
 
-export type SearchResult = CharacterSearchResult | CitySearchResult;
+export interface BusinessSearchResult {
+  kind: "business";
+  id: number;
+  name: string;
+  archetype: string;
+  hostCityName: string;
+}
+
+export type SearchResult = CharacterSearchResult | CitySearchResult | BusinessSearchResult;
 
 /** How closely a result's name matches the query: an exact match ranks
  * ahead of a prefix match, which ranks ahead of any other substring match.
@@ -31,14 +39,15 @@ function matchRank(name: string, normalizedQuery: string): number {
   return 2;
 }
 
-/** Searches dynasty members and sector cities by name (issue #88). A
+/** Searches dynasty members, sector cities, and businesses by name. A
  * case-insensitive substring match is enough for the bootstrap slice's
  * data sizes, so this stays a plain linear scan rather than building any
  * search index. Blank or whitespace-only queries return no results, so
- * an empty search field doesn't show every character and city at once. */
+ * an empty search field doesn't show every target at once. */
 export function searchGlobally(
   sector: Sector,
   members: readonly DynastyMemberSummary[],
+  businesses: readonly BusinessView[],
   query: string,
 ): SearchResult[] {
   const normalizedQuery = query.trim().toLowerCase();
@@ -64,7 +73,17 @@ export function searchGlobally(
       countryName: city.countryName,
     }));
 
-  return [...characterResults, ...cityResults].sort(
+  const businessResults: BusinessSearchResult[] = businesses
+    .filter((business) => business.name.toLowerCase().includes(normalizedQuery))
+    .map((business) => ({
+      kind: "business",
+      id: business.id,
+      name: business.name,
+      archetype: business.archetype,
+      hostCityName: business.host_city_name,
+    }));
+
+  return [...characterResults, ...cityResults, ...businessResults].sort(
     (a, b) => matchRank(a.name, normalizedQuery) - matchRank(b.name, normalizedQuery),
   );
 }

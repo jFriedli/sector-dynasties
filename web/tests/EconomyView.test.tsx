@@ -107,7 +107,11 @@ type FoundBusinessFn = (
   hostCityId: number,
 ) => void | Promise<void>;
 
-function renderInto(container: HTMLDivElement, onFoundBusiness: FoundBusinessFn) {
+function renderInto(
+  container: HTMLDivElement,
+  onFoundBusiness: FoundBusinessFn,
+  selectedBusinessId: number | null = null,
+) {
   const root = createRoot(container);
   act(() => {
     root.render(
@@ -116,6 +120,7 @@ function renderInto(container: HTMLDivElement, onFoundBusiness: FoundBusinessFn)
         businesses={BUSINESSES}
         tradeRoutes={TRADE_ROUTES}
         careers={CAREERS}
+        selectedBusinessId={selectedBusinessId}
         onFoundBusiness={onFoundBusiness}
       />,
     );
@@ -146,6 +151,15 @@ describe("EconomyView", () => {
     expect(container.textContent).toContain("Meridian");
     expect(container.textContent).toContain("Founder Meridian");
     expect(container.textContent).toContain("Analyst");
+  });
+
+  it("highlights the selected business row", () => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = renderInto(container, vi.fn(), 1);
+
+    const selectedRow = container.querySelector("#business-1");
+    expect(selectedRow?.className).toContain("business-row--selected");
   });
 
   it("founds a business with the form's chosen name and city", async () => {

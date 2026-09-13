@@ -36,6 +36,7 @@ export function App() {
   const [screen, setScreen] = useState<Screen>("galaxy");
   const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<number | null>(null);
   const [lastStep, setLastStep] = useState<LastStepPerformance | null>(null);
   const [yearsToAdvance, setYearsToAdvance] = useState<number>(5);
   const debugOverlayVisible = useDebugOverlayVisible();
@@ -199,6 +200,11 @@ export function App() {
     setScreen("dynasty");
   }, []);
 
+  const onSelectBusinessFromSearch = useCallback((businessId: number) => {
+    setSelectedBusinessId(businessId);
+    setScreen("economy");
+  }, []);
+
   if (!summary || !snapshot) {
     return <p className="loading">{copy.loading}</p>;
   }
@@ -250,8 +256,10 @@ export function App() {
         <GlobalSearch
           sector={snapshot.sector}
           members={summary.dynasty_members}
+          businesses={summary.businesses}
           onSelectCity={onSelectCityFromSearch}
           onSelectCharacter={onSelectCharacterFromSearch}
+          onSelectBusiness={onSelectBusinessFromSearch}
         />
       </div>
       {debugOverlayVisible && (
@@ -288,6 +296,7 @@ export function App() {
           businesses={summary.businesses}
           tradeRoutes={summary.trade_routes}
           careers={summary.careers}
+          selectedBusinessId={selectedBusinessId}
           onFoundBusiness={onFoundBusiness}
         />
       )}

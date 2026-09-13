@@ -1,7 +1,9 @@
+import { act } from "react-dom/test-utils";
+import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { GlobalSearch } from "../src/GlobalSearch";
-import type { DynastyMemberSummary, Sector } from "../src/simTypes";
+import type { BusinessView, DynastyMemberSummary, Sector } from "../src/simTypes";
 
 const members: DynastyMemberSummary[] = [
   { id: 1, name: "Meridia Voss", age_years: 52, alive: true, role: "Head" },
@@ -52,18 +54,49 @@ const sector: Sector = {
   ],
 };
 
+const businesses: BusinessView[] = [
+  {
+    id: 9,
+    name: "Meridian Freight Trust",
+    archetype: "Logistics",
+    host_city_id: 4,
+    host_city_name: "Meridian",
+    equity: 1000,
+  },
+];
+
+function setInputValue(input: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+  setter.call(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 function renderSearch() {
   document.body.innerHTML = renderToStaticMarkup(
     <GlobalSearch
       sector={sector}
       members={members}
+      businesses={businesses}
       onSelectCity={vi.fn()}
       onSelectCharacter={vi.fn()}
+      onSelectBusiness={vi.fn()}
     />,
   );
 }
 
 describe("GlobalSearch", () => {
+  let container: HTMLDivElement | null = null;
+  let root: Root | null = null;
+
+  afterEach(() => {
+    act(() => {
+      root?.unmount();
+    });
+    container?.remove();
+    container = null;
+    root = null;
+  });
+
   it("associates the search input with its visible label", () => {
     renderSearch();
 
@@ -80,5 +113,41 @@ describe("GlobalSearch", () => {
 
     expect(document.querySelector(".global-search-results")).toBeNull();
     expect(document.querySelector(".global-search-empty")).toBeNull();
+  });
+
+  it("selects a matching business result", () => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    const onSelectBusiness = vi.fn();
+    root = createRoot(container);
+
+    act(() => {
+      root!.render(
+        <GlobalSearch
+          sector={sector}
+          members={members}
+          businesses={businesses}
+          onSelectCity={vi.fn()}
+          onSelectCharacter={vi.fn()}
+          onSelectBusiness={onSelectBusiness}
+        />,
+      );
+    });
+
+    const input = container.querySelector("input") as HTMLInputElement;
+    act(() => {
+      setInputValue(input, "freight");
+    });
+
+    const result = container.querySelector(".global-search-result") as HTMLButtonElement;
+    expect(result.textContent).toContain("Meridian Freight Trust");
+    expect(result.textContent).toContain("Business");
+
+    act(() => {
+      result.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(onSelectBusiness).toHaveBeenCalledWith(9);
+    expect(input.value).toBe("");
   });
 });
