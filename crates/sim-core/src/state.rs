@@ -12,6 +12,7 @@ use crate::business::{self, Business, BusinessArchetype, FoundBusinessError};
 use crate::career::{self, Career, CareerTrack, StartCareerError};
 use crate::dynasty::{Character, Dynasty, DynastyMemberSummary};
 use crate::economy;
+use crate::events::{self, EventLog, PendingEvent, ResolveEventError};
 use crate::favor::{self, Favor, GrantFavorError};
 use crate::migration;
 use crate::mortality;
@@ -62,6 +63,21 @@ pub struct SimState {
     /// logistics business archetype (#60) to build on.
     #[serde(default)]
     pub trade_routes: Vec<TradeRoute>,
+    /// Events raised by `events::scan_for_eligible_events` but not yet
+    /// resolved by the player. Empty on a save from before the event
+    /// framework existed (issue #29). Resolve one through
+    /// `SimState::resolve_event` rather than mutating this directly, so an
+    /// effect always runs exactly once and the event log stays consistent
+    /// with it.
+    #[serde(default)]
+    pub pending_events: Vec<PendingEvent>,
+    /// Every event ever resolved, across every character. See
+    /// `events::EventLog`: this doubles as the "has this already happened"
+    /// flag store that keeps a non-repeatable event from recurring and lets
+    /// a repeatable one respect its cooldown. Empty on a save from before
+    /// the event framework existed.
+    #[serde(default)]
+    pub event_log: EventLog,
     economy_rng: SimRng,
     mortality_rng: SimRng,
     /// Placeholder domain on a save from before careers existed: no
@@ -138,6 +154,8 @@ impl SimState {
             careers: Vec::new(),
             favors: Vec::new(),
             trade_routes,
+            pending_events: Vec::new(),
+            event_log: EventLog::default(),
             economy_rng: SimRng::from_seed(seed, "economy"),
             mortality_rng: SimRng::from_seed(seed, "dynasty:mortality"),
             career_rng: SimRng::from_seed(seed, "career"),
@@ -203,6 +221,19 @@ impl SimState {
         let granted = favor::grant_favor(&self.dynasty, creditor_id, debtor_id, magnitude)?;
         self.favors.push(granted);
         Ok(())
+    }
+
+    /// Apply the player's chosen effect for the pending event named
+    /// `pending_id` and `choice_key`, then record it in `event_log` and
+    /// remove it from `pending_events`. Fails without mutating `self` if
+    /// the pending event, its definition, or the choice can't be resolved;
+    /// see `events::resolve_pending_event`.
+    pub fn resolve_event(
+        &mut self,
+        pending_id: EntityId,
+        choice_key: &str,
+    ) -> Result<(), ResolveEventError> {
+        events::resolve_pending_event(self, pending_id, choice_key)
     }
 
     /// Spend the dynasty head's wealth to nudge one component of a
@@ -281,6 +312,11 @@ impl SimState {
             // here).
             mortality::age_and_roll_mortality(&mut self.dynasty, &mut self.mortality_rng);
             birth::maybe_birth_child(self.seed, &mut self.dynasty, self.clock.year());
+            // Scan after this year's births/deaths so a freshly born or
+            // freshly deceased character is reflected correctly (a newborn
+            // is never yet an eligible candidate; a character who died this
+            // year is excluded rather than briefly considered alive).
+            events::scan_for_eligible_events(self);
         }
         // Further yearly demographic change (culture) hooks in here as its
         // own system; see docs/ROADMAP.md milestone "Population and

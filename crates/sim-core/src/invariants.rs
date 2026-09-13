@@ -190,6 +190,57 @@ pub fn check_invariants(state: &SimState) -> Vec<InvariantViolation> {
         }
     }
 
+    for (i, pending) in state.pending_events.iter().enumerate() {
+        if crate::events::definition(&pending.key).is_none() {
+            violations.push(InvariantViolation(format!(
+                "pending event (id {}) key '{}' does not reference a known event definition",
+                pending.id, pending.key
+            )));
+        }
+        if !state
+            .dynasty
+            .members
+            .iter()
+            .any(|c| c.id == pending.character_id)
+        {
+            violations.push(InvariantViolation(format!(
+                "pending event (id {}) character_id {} does not reference an existing dynasty \
+                 member",
+                pending.id, pending.character_id
+            )));
+        }
+        if state.pending_events[..i]
+            .iter()
+            .any(|other| other.key == pending.key && other.character_id == pending.character_id)
+        {
+            violations.push(InvariantViolation(format!(
+                "duplicate pending event for key '{}' and character_id {}",
+                pending.key, pending.character_id
+            )));
+        }
+    }
+
+    for resolved in &state.event_log.resolved {
+        if crate::events::definition(&resolved.key).is_none() {
+            violations.push(InvariantViolation(format!(
+                "resolved event log entry key '{}' does not reference a known event definition",
+                resolved.key
+            )));
+        }
+        if !state
+            .dynasty
+            .members
+            .iter()
+            .any(|c| c.id == resolved.character_id)
+        {
+            violations.push(InvariantViolation(format!(
+                "resolved event log entry character_id {} does not reference an existing dynasty \
+                 member",
+                resolved.character_id
+            )));
+        }
+    }
+
     violations
 }
 
@@ -581,5 +632,96 @@ mod tests {
         });
         let violations = check_invariants(&state);
         assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_freshly_scanned_state_has_no_pending_event_violations() {
+        let mut state = SimState::new(13);
+        crate::events::scan_for_eligible_events(&mut state);
+        assert!(
+            !state.pending_events.is_empty(),
+            "expected the founder to be offered at least one event"
+        );
+        assert_eq!(check_invariants(&state), Vec::new());
+    }
+
+    #[test]
+    fn a_pending_event_with_an_unknown_key_is_caught() {
+        let mut state = SimState::new(14);
+        let head_id = state.dynasty.head_character_id;
+        state.pending_events.push(crate::events::PendingEvent {
+            id: 1,
+            key: "not_a_real_event".to_string(),
+            character_id: head_id,
+            raised_year: 0,
+        });
+        let violations = check_invariants(&state);
+        assert!(
+            violations
+                .iter()
+                .any(|v| v.0.contains("does not reference a known event definition")),
+            "expected a violation naming the unknown event key, got {violations:?}"
+        );
+    }
+
+    #[test]
+    fn a_pending_event_with_an_unknown_character_is_caught() {
+        let mut state = SimState::new(15);
+        state.pending_events.push(crate::events::PendingEvent {
+            id: 1,
+            key: "family_seed_money".to_string(),
+            character_id: 999_999,
+            raised_year: 0,
+        });
+        let violations = check_invariants(&state);
+        assert!(
+            violations
+                .iter()
+                .any(|v| v.0.contains("does not reference an existing dynasty")),
+            "expected a violation naming the dangling character, got {violations:?}"
+        );
+    }
+
+    #[test]
+    fn a_duplicate_pending_event_for_the_same_character_is_caught() {
+        let mut state = SimState::new(16);
+        let head_id = state.dynasty.head_character_id;
+        state.pending_events.push(crate::events::PendingEvent {
+            id: 1,
+            key: "family_seed_money".to_string(),
+            character_id: head_id,
+            raised_year: 0,
+        });
+        state.pending_events.push(crate::events::PendingEvent {
+            id: 2,
+            key: "family_seed_money".to_string(),
+            character_id: head_id,
+            raised_year: 0,
+        });
+        let violations = check_invariants(&state);
+        assert!(
+            violations
+                .iter()
+                .any(|v| v.0.contains("duplicate pending event")),
+            "expected a violation naming the duplicate, got {violations:?}"
+        );
+    }
+
+    #[test]
+    fn a_resolved_event_log_entry_with_an_unknown_character_is_caught() {
+        let mut state = SimState::new(17);
+        state.event_log.resolved.push(crate::events::ResolvedEvent {
+            key: "family_seed_money".to_string(),
+            character_id: 999_999,
+            choice_key: "accept".to_string(),
+            year: 1,
+        });
+        let violations = check_invariants(&state);
+        assert!(
+            violations
+                .iter()
+                .any(|v| v.0.contains("resolved event log entry")),
+            "expected a violation naming the dangling resolved-event character, got {violations:?}"
+        );
     }
 }
