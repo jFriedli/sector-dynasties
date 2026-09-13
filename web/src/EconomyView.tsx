@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { Briefcase, Building2, Coins, Route } from "lucide-react";
 import { copy } from "./content/copy";
-import { BUSINESS_ARCHETYPES, citiesEligibleForArchetype } from "./economyView";
+import { BUSINESS_ARCHETYPES, citiesEligibleForArchetype } from "./economyViewLogic";
 import type { BusinessView, CareerView, Sector, TradeRouteView } from "./simTypes";
 
 const creditFormat = new Intl.NumberFormat("en-US", {

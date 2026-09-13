@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUSINESS_ARCHETYPES, citiesEligibleForArchetype } from "../src/economyView";
+import { BUSINESS_ARCHETYPES, citiesEligibleForArchetype } from "../src/economyViewLogic";
 import type { CitySpecialization, Sector } from "../src/simTypes";
 
 function cityFixture(id: number, specialization: CitySpecialization, name: string) {

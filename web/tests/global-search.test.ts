@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { searchGlobally } from "../src/globalSearch";
+import { searchGlobally } from "../src/globalSearchLogic";
 import type { DynastyMemberSummary, Sector } from "../src/simTypes";
 
 const members: DynastyMemberSummary[] = [

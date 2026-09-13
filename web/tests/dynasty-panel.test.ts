@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dynastyMemberRows } from "../src/dynastyPanel";
+import { dynastyMemberRows } from "../src/dynastyPanelLogic";
 import type { DynastyMemberSummary } from "../src/simTypes";
 
 const members: DynastyMemberSummary[] = [

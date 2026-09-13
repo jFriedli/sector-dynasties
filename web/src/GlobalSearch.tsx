@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { copy } from "./content/copy";
-import { searchGlobally, type SearchResult } from "./globalSearch";
+import { searchGlobally, type SearchResult } from "./globalSearchLogic";
 import type { DynastyMemberSummary, Sector } from "./simTypes";
 
 interface GlobalSearchProps {
@@ -26,9 +26,9 @@ function resultKindLabel(result: SearchResult): string {
 }
 
 /** A single search field that jumps to a matching character or city (issue
- * #88): matching itself lives in `globalSearch.ts` so it can be unit
+ * #88): matching itself lives in `globalSearchLogic.ts` so it can be unit
  * tested without rendering, matching this codebase's split between data
- * shaping and components (see `sectorBrowser.ts` / `SectorBrowser.tsx`). */
+ * shaping and components (see `sectorBrowserLogic.ts` / `SectorBrowser.tsx`). */
 export function GlobalSearch({
   sector,
   members,

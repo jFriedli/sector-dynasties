@@ -4,7 +4,7 @@ import {
   entityRowsFromState,
   entityTypeLabel,
   filterEntityRows,
-} from "../src/stateInspector";
+} from "../src/stateInspectorLogic";
 import type { SimStateSnapshot, StateSummary } from "../src/simTypes";
 
 const SUMMARY: StateSummary = {
