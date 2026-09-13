@@ -8,6 +8,14 @@ use sim_core::world::{GovernmentComponent, PolicyDirection};
 use sim_core::SimState as CoreState;
 use wasm_bindgen::prelude::*;
 
+/// The wealth cost of one `lobbyPolicy` call. A free function rather than
+/// a `SimHandle` method since it doesn't depend on any game state, exposed
+/// so the lobbying form's label never has to duplicate this constant.
+#[wasm_bindgen(js_name = lobbyingWealthCost)]
+pub fn lobbying_wealth_cost() -> f64 {
+    sim_core::state::LOBBYING_WEALTH_COST
+}
+
 #[wasm_bindgen]
 pub struct SimHandle {
     inner: CoreState,

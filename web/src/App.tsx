@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import init, { SimHandle } from "./wasm/sim_wasm.js";
+import init, { lobbyingWealthCost, SimHandle } from "./wasm/sim_wasm.js";
 import { copy } from "./content/copy";
 import { CityDetailPanel } from "./CityDetailPanel";
 import { DebugOverlay, useDebugOverlayVisible } from "./DebugOverlay";
@@ -18,7 +18,13 @@ import { isTauriRuntime } from "./tauriRuntime";
 import { TimeControls } from "./TimeControls";
 import { cityDetailById } from "./sectorBrowserLogic";
 import type { LastStepPerformance } from "./simPerformance";
-import type { SimStateSnapshot, StateSummary } from "./simTypes";
+import type {
+  GovernmentComponent,
+  LobbyingOutcome,
+  PolicyDirection,
+  SimStateSnapshot,
+  StateSummary,
+} from "./simTypes";
 
 const DAYS_PER_YEAR = 360;
 const YEAR_STEP_OPTIONS = [1, 5, 10] as const;
@@ -35,6 +41,10 @@ export function App() {
   const debugOverlayVisible = useDebugOverlayVisible();
   const [saveStore, setSaveStore] = useState<SaveSlotStore>(() => createIndexedDbSaveSlotStore());
   const [hasSavedSlot, setHasSavedSlot] = useState(false);
+  // Read from wasm rather than duplicated here, so this can never drift
+  // from sim-core's actual LOBBYING_WEALTH_COST. 0 until wasm loads, which
+  // is fine since the lobby form isn't rendered before summary/snapshot do.
+  const [lobbyingCost, setLobbyingCost] = useState(0);
   const [saveStatus, setSaveStatus] = useState<SaveLoadStatus>({ kind: "idle" });
 
   // Swap in the filesystem-backed store when running inside the Tauri
@@ -69,6 +79,7 @@ export function App() {
     let cancelled = false;
     init().then(() => {
       if (cancelled) return;
+      setLobbyingCost(lobbyingWealthCost());
       const h = new SimHandle(BigInt(42));
       setHandle(h);
       const nextSnapshot = refreshFrom(h);
@@ -126,6 +137,18 @@ export function App() {
       if (!handle) return;
       handle.foundBusiness(name, archetype, hostCityId);
       refreshFrom(handle);
+    },
+    [handle, refreshFrom],
+  );
+
+  const onLobby = useCallback(
+    (countryId: number, component: GovernmentComponent, direction: PolicyDirection) => {
+      if (!handle) throw new Error("Simulation not ready yet.");
+      const outcome = JSON.parse(
+        handle.lobbyPolicy(countryId, component, direction),
+      ) as LobbyingOutcome;
+      refreshFrom(handle);
+      return outcome;
     },
     [handle, refreshFrom],
   );
@@ -251,6 +274,8 @@ export function App() {
           />
           <CityDetailPanel
             city={selectedCityId ? cityDetailById(snapshot.sector, selectedCityId) : null}
+            lobbyingCost={lobbyingCost}
+            onLobby={onLobby}
           />
         </div>
       )}
