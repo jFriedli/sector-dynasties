@@ -16,7 +16,7 @@ import { StateInspector } from "./StateInspector";
 import { createTauriFsSaveSlotStore } from "./tauriFsSaveSlotStore";
 import { isTauriRuntime } from "./tauriRuntime";
 import { TimeControls } from "./TimeControls";
-import { cityDetailById } from "./sectorBrowser";
+import { cityDetailById } from "./sectorBrowserLogic";
 import type { LastStepPerformance } from "./simPerformance";
 import type { SimStateSnapshot, StateSummary } from "./simTypes";
 

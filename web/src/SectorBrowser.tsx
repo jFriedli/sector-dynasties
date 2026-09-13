@@ -1,7 +1,7 @@
 import { Orbit } from "lucide-react";
 import { copy } from "./content/copy";
 import { ResourceTagIcon, SpecializationIcon } from "./gameIcons";
-import { cityRowsFromSector, specializationLabel, totalTreasury } from "./sectorBrowser";
+import { cityRowsFromSector, specializationLabel, totalTreasury } from "./sectorBrowserLogic";
 import type { Sector } from "./simTypes";
 
 const numberFormat = new Intl.NumberFormat("en-US");

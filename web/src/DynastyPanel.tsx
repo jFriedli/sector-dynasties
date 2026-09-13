@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Crown, Skull, User } from "lucide-react";
 import { copy } from "./content/copy";
-import { dynastyMemberRows } from "./dynastyPanel";
+import { dynastyMemberRows } from "./dynastyPanelLogic";
 import type { DynastyMemberSummary } from "./simTypes";
 
 interface DynastyPanelProps {

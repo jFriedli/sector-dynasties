@@ -1,4 +1,4 @@
-import { cityDetailsFromSector } from "./sectorBrowser";
+import { cityDetailsFromSector } from "./sectorBrowserLogic";
 import type { DynastyMemberSummary, DynastyRole, Sector } from "./simTypes";
 
 export interface CharacterSearchResult {

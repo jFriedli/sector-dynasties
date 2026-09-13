@@ -4,8 +4,8 @@ import {
   entityRowsFromState,
   entityTypeLabel,
   filterEntityRows,
-} from "./stateInspector";
-import type { EntityType } from "./stateInspector";
+} from "./stateInspectorLogic";
+import type { EntityType } from "./stateInspectorLogic";
 import type { SimStateSnapshot, StateSummary } from "./simTypes";
 
 // Developer-facing state inspector dev panel (issue #93), extending the
@@ -25,7 +25,7 @@ interface StateInspectorProps {
 
 /** Searchable tree/table view over the current SimState: every system,
  * planet, country, city, dynasty member, and RNG domain, filterable by
- * entity type and name. See stateInspector.ts for the data shaping. */
+ * entity type and name. See stateInspectorLogic.ts for the data shaping. */
 export function StateInspector({ summary, snapshot }: StateInspectorProps) {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<EntityType | null>(null);

@@ -1,6 +1,6 @@
 import { copy } from "./content/copy";
 import { SpecializationIcon } from "./gameIcons";
-import { specializationLabel, type CityDetail } from "./sectorBrowser";
+import { specializationLabel, type CityDetail } from "./sectorBrowserLogic";
 
 const numberFormat = new Intl.NumberFormat("en-US");
 const percentFormat = new Intl.NumberFormat("en-US", {

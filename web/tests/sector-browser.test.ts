@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cityDetailById, cityRowsFromSector, totalTreasury } from "../src/sectorBrowser";
+import { cityDetailById, cityRowsFromSector, totalTreasury } from "../src/sectorBrowserLogic";
 import type { Sector } from "../src/simTypes";
 
 const sector: Sector = {
