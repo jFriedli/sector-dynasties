@@ -19,19 +19,56 @@ export interface DynastyMemberSummary {
   role: DynastyRole;
 }
 
-export interface PendingEventChoiceSummary {
+// Mirrors sim_core::views::EventChoiceView.
+export interface EventChoiceView {
   key: string;
   label: string;
 }
 
-export interface PendingEventSummary {
+// Mirrors sim_core::views::PendingEventView. A decision awaiting the
+// player; see EventsView.tsx.
+export interface PendingEventView {
   id: number;
   key: string;
   title: string;
   character_id: number;
   character_name: string;
   raised_year: number;
-  choices: PendingEventChoiceSummary[];
+  choices: EventChoiceView[];
+}
+
+// Mirrors sim_core::views::BusinessView.
+export interface BusinessView {
+  id: number;
+  name: string;
+  archetype: string;
+  host_city_id: number;
+  host_city_name: string;
+  equity: number;
+}
+
+// Mirrors sim_core::views::TradeRouteView.
+export interface TradeRouteView {
+  id: number;
+  city_a_id: number;
+  city_a_name: string;
+  city_b_id: number;
+  city_b_name: string;
+  capacity: number;
+  distance: number;
+  cost: number;
+  reliability: number;
+}
+
+// Mirrors sim_core::views::CareerView.
+export interface CareerView {
+  id: number;
+  character_id: number;
+  character_name: string;
+  track: string;
+  job_title: string;
+  employer_city_id: number;
+  employer_city_name: string;
 }
 
 // Mirrors sim_core::state::StateSummary. Kept as a hand-written type
@@ -48,8 +85,11 @@ export interface StateSummary {
   dynasty_name: string;
   dynasty_wealth: number;
   dynasty_members: DynastyMemberSummary[];
-  pending_events: PendingEventSummary[];
   rng_domains: RngDomainSummary[];
+  pending_events: PendingEventView[];
+  businesses: BusinessView[];
+  trade_routes: TradeRouteView[];
+  careers: CareerView[];
 }
 
 export type CitySpecialization = "Mining" | "Manufacturing" | "Finance" | "Research" | "Logistics";

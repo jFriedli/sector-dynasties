@@ -358,42 +358,12 @@ impl SimState {
             dynasty_name: self.dynasty.name.clone(),
             dynasty_wealth: self.dynasty.total_wealth(),
             dynasty_members: self.dynasty.member_summaries(),
-            pending_events: self.pending_event_summaries(),
             rng_domains: self.rng_domain_summaries(),
+            pending_events: crate::views::pending_event_views(self),
+            businesses: crate::views::business_views(self),
+            trade_routes: crate::views::trade_route_views(self),
+            careers: crate::views::career_views(self),
         }
-    }
-
-    fn pending_event_summaries(&self) -> Vec<PendingEventSummary> {
-        self.pending_events
-            .iter()
-            .filter_map(|pending| {
-                let definition = events::definition(&pending.key)?;
-                let character_name = self
-                    .dynasty
-                    .members
-                    .iter()
-                    .find(|character| character.id == pending.character_id)
-                    .map(|character| character.name.clone())
-                    .unwrap_or_else(|| "Unknown character".to_string());
-
-                Some(PendingEventSummary {
-                    id: pending.id,
-                    key: pending.key.clone(),
-                    title: definition.title.to_string(),
-                    character_id: pending.character_id,
-                    character_name,
-                    raised_year: pending.raised_year,
-                    choices: definition
-                        .choices
-                        .iter()
-                        .map(|choice| PendingEventChoiceSummary {
-                            key: choice.key.to_string(),
-                            label: choice.label.to_string(),
-                        })
-                        .collect(),
-                })
-            })
-            .collect()
     }
 
     /// Debug-only snapshot of every RNG stream currently persisted on
@@ -461,25 +431,13 @@ pub struct StateSummary {
     pub dynasty_name: String,
     pub dynasty_wealth: f64,
     pub dynasty_members: Vec<DynastyMemberSummary>,
-    pub pending_events: Vec<PendingEventSummary>,
     pub rng_domains: Vec<RngDomainSummary>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct PendingEventSummary {
-    pub id: EntityId,
-    pub key: String,
-    pub title: String,
-    pub character_id: EntityId,
-    pub character_name: String,
-    pub raised_year: u64,
-    pub choices: Vec<PendingEventChoiceSummary>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct PendingEventChoiceSummary {
-    pub key: String,
-    pub label: String,
+    /// Decisions currently awaiting the player, ready to render as a card.
+    /// See `views::pending_event_views`.
+    pub pending_events: Vec<crate::views::PendingEventView>,
+    pub businesses: Vec<crate::views::BusinessView>,
+    pub trade_routes: Vec<crate::views::TradeRouteView>,
+    pub careers: Vec<crate::views::CareerView>,
 }
 
 #[cfg(test)]

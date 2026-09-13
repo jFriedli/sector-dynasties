@@ -4,9 +4,11 @@ import { copy } from "./content/copy";
 import { CityDetailPanel } from "./CityDetailPanel";
 import { DebugOverlay, useDebugOverlayVisible } from "./DebugOverlay";
 import { DynastyPanel } from "./DynastyPanel";
-import { EventPanel } from "./EventPanel";
+import { EconomyView } from "./EconomyView";
+import { EventsView } from "./EventsView";
 import { GlobalSearch } from "./GlobalSearch";
 import { createIndexedDbSaveSlotStore } from "./indexedDbSaveSlotStore";
+import { Nav, type Screen } from "./Nav";
 import { SaveControls, type SaveLoadStatus } from "./SaveControls";
 import { createSaveSlot, DEFAULT_SLOT_ID, type SaveSlotStore } from "./saveSlots";
 import { SectorBrowser } from "./SectorBrowser";
@@ -25,6 +27,7 @@ export function App() {
   const [handle, setHandle] = useState<SimHandle | null>(null);
   const [summary, setSummary] = useState<StateSummary | null>(null);
   const [snapshot, setSnapshot] = useState<SimStateSnapshot | null>(null);
+  const [screen, setScreen] = useState<Screen>("galaxy");
   const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null);
   const [lastStep, setLastStep] = useState<LastStepPerformance | null>(null);
@@ -33,11 +36,6 @@ export function App() {
   const [saveStore, setSaveStore] = useState<SaveSlotStore>(() => createIndexedDbSaveSlotStore());
   const [hasSavedSlot, setHasSavedSlot] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveLoadStatus>({ kind: "idle" });
-
-  const refreshFromHandle = useCallback((nextHandle: SimHandle) => {
-    setSummary(JSON.parse(nextHandle.summary_json()) as StateSummary);
-    setSnapshot(JSON.parse(nextHandle.to_json()) as SimStateSnapshot);
-  }, []);
 
   // Swap in the filesystem-backed store when running inside the Tauri
   // desktop shell (issue #102's Linux packaging spike). The browser
@@ -56,14 +54,24 @@ export function App() {
     };
   }, []);
 
+  // Re-read both projections from a handle after any mutating call
+  // (stepping time, resolving an event, founding a business, loading a
+  // save). Centralized here so every action below stays a one-liner and
+  // none of them can forget the snapshot half of the refresh.
+  const refreshFrom = useCallback((h: SimHandle) => {
+    setSummary(JSON.parse(h.summary_json()) as StateSummary);
+    const nextSnapshot = JSON.parse(h.to_json()) as SimStateSnapshot;
+    setSnapshot(nextSnapshot);
+    return nextSnapshot;
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     init().then(() => {
       if (cancelled) return;
       const h = new SimHandle(BigInt(42));
       setHandle(h);
-      refreshFromHandle(h);
-      const nextSnapshot = JSON.parse(h.to_json()) as SimStateSnapshot;
+      const nextSnapshot = refreshFrom(h);
       setSelectedCityId(
         nextSnapshot.sector.systems[0]?.planets[0]?.countries[0]?.cities[0]?.id ?? null,
       );
@@ -71,7 +79,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [refreshFromHandle]);
+  }, [refreshFrom]);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,8 +96,8 @@ export function App() {
     const startedAt = performance.now();
     handle.step_days(DAYS_PER_YEAR);
     setLastStep({ days: DAYS_PER_YEAR, durationMs: performance.now() - startedAt });
-    refreshFromHandle(handle);
-  }, [handle, refreshFromHandle]);
+    refreshFrom(handle);
+  }, [handle, refreshFrom]);
 
   // A synchronous call is intentional here: the bootstrap slice's data
   // sizes make even a 10-year advance (3600 simulated days) fast enough
@@ -101,16 +109,25 @@ export function App() {
     const startedAt = performance.now();
     handle.step_days(days);
     setLastStep({ days, durationMs: performance.now() - startedAt });
-    refreshFromHandle(handle);
-  }, [handle, refreshFromHandle, yearsToAdvance]);
+    refreshFrom(handle);
+  }, [handle, yearsToAdvance, refreshFrom]);
 
   const onResolveEvent = useCallback(
-    (eventId: number, choiceKey: string) => {
+    (pendingId: number, choiceKey: string) => {
       if (!handle) return;
-      handle.resolveEvent(eventId, choiceKey);
-      refreshFromHandle(handle);
+      handle.resolveEvent(pendingId, choiceKey);
+      refreshFrom(handle);
     },
-    [handle, refreshFromHandle],
+    [handle, refreshFrom],
+  );
+
+  const onFoundBusiness = useCallback(
+    (name: string, archetype: string, hostCityId: number) => {
+      if (!handle) return;
+      handle.foundBusiness(name, archetype, hostCityId);
+      refreshFrom(handle);
+    },
+    [handle, refreshFrom],
   );
 
   const onSave = useCallback(() => {
@@ -138,8 +155,7 @@ export function App() {
         const nextHandle = SimHandle.fromJson(slot.stateJson);
         handle?.free();
         setHandle(nextHandle);
-        refreshFromHandle(nextHandle);
-        const nextSnapshot = JSON.parse(nextHandle.to_json()) as SimStateSnapshot;
+        const nextSnapshot = refreshFrom(nextHandle);
         setSelectedCityId(
           nextSnapshot.sector.systems[0]?.planets[0]?.countries[0]?.cities[0]?.id ?? null,
         );
@@ -148,7 +164,17 @@ export function App() {
       .catch((error: unknown) => {
         setSaveStatus({ kind: "error", message: String(error) });
       });
-  }, [handle, refreshFromHandle, saveStore]);
+  }, [handle, saveStore, refreshFrom]);
+
+  const onSelectCityFromSearch = useCallback((cityId: number) => {
+    setSelectedCityId(cityId);
+    setScreen("galaxy");
+  }, []);
+
+  const onSelectCharacterFromSearch = useCallback((characterId: number) => {
+    setSelectedMemberId(characterId);
+    setScreen("dynasty");
+  }, []);
 
   if (!summary || !snapshot) {
     return <p className="loading">{copy.loading}</p>;
@@ -184,43 +210,65 @@ export function App() {
           </dd>
         </div>
       </dl>
-      <TimeControls
-        yearsToAdvance={yearsToAdvance}
-        yearStepOptions={YEAR_STEP_OPTIONS}
-        onYearsToAdvanceChange={setYearsToAdvance}
-        onAdvanceOneYear={advanceOneYear}
-        onAdvanceYears={advanceYears}
-      />
-      <EventPanel event={summary.pending_events[0] ?? null} onResolve={onResolveEvent} />
-      <SaveControls
-        hasSavedSlot={hasSavedSlot}
-        status={saveStatus}
-        onSave={onSave}
-        onLoad={onLoad}
-      />
-      <GlobalSearch
-        sector={snapshot.sector}
-        members={summary.dynasty_members}
-        onSelectCity={setSelectedCityId}
-        onSelectCharacter={setSelectedMemberId}
-      />
+      <div className="control-strip">
+        <TimeControls
+          yearsToAdvance={yearsToAdvance}
+          yearStepOptions={YEAR_STEP_OPTIONS}
+          onYearsToAdvanceChange={setYearsToAdvance}
+          onAdvanceOneYear={advanceOneYear}
+          onAdvanceYears={advanceYears}
+        />
+        <SaveControls
+          hasSavedSlot={hasSavedSlot}
+          status={saveStatus}
+          onSave={onSave}
+          onLoad={onLoad}
+        />
+        <GlobalSearch
+          sector={snapshot.sector}
+          members={summary.dynasty_members}
+          onSelectCity={onSelectCityFromSearch}
+          onSelectCharacter={onSelectCharacterFromSearch}
+        />
+      </div>
       {debugOverlayVisible && (
         <>
           <DebugOverlay summary={summary} snapshot={snapshot} lastStep={lastStep} />
           <StateInspector summary={summary} snapshot={snapshot} />
         </>
       )}
-      <DynastyPanel members={summary.dynasty_members} selectedMemberId={selectedMemberId} />
-      <div className="world-panel">
-        <SectorBrowser
+      <Nav
+        screen={screen}
+        onSelectScreen={setScreen}
+        pendingEventCount={summary.pending_events.length}
+      />
+      {screen === "galaxy" && (
+        <div className="world-panel">
+          <SectorBrowser
+            sector={snapshot.sector}
+            selectedCityId={selectedCityId}
+            onSelectCity={setSelectedCityId}
+          />
+          <CityDetailPanel
+            city={selectedCityId ? cityDetailById(snapshot.sector, selectedCityId) : null}
+          />
+        </div>
+      )}
+      {screen === "dynasty" && (
+        <DynastyPanel members={summary.dynasty_members} selectedMemberId={selectedMemberId} />
+      )}
+      {screen === "economy" && (
+        <EconomyView
           sector={snapshot.sector}
-          selectedCityId={selectedCityId}
-          onSelectCity={setSelectedCityId}
+          businesses={summary.businesses}
+          tradeRoutes={summary.trade_routes}
+          careers={summary.careers}
+          onFoundBusiness={onFoundBusiness}
         />
-        <CityDetailPanel
-          city={selectedCityId ? cityDetailById(snapshot.sector, selectedCityId) : null}
-        />
-      </div>
+      )}
+      {screen === "events" && (
+        <EventsView pendingEvents={summary.pending_events} onResolve={onResolveEvent} />
+      )}
     </main>
   );
 }

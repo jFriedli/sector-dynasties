@@ -20,11 +20,14 @@ const SUMMARY: StateSummary = {
     { id: 1, name: "Founder Meridian", age_years: 54, alive: true, role: "Head" },
     { id: 2, name: "Junior Meridian", age_years: 20, alive: false, role: "Member" },
   ],
-  pending_events: [],
   rng_domains: [
     { domain: "economy", fingerprint: "deadbeefcafef00d" },
     { domain: "worldgen", fingerprint: "0badf00d12345678" },
   ],
+  pending_events: [],
+  businesses: [],
+  trade_routes: [],
+  careers: [],
 };
 
 const SNAPSHOT: SimStateSnapshot = {

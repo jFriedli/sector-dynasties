@@ -1,5 +1,5 @@
 :root {
-  color-scheme: light;
+  color-scheme: dark;
   font-family:
     Inter,
     ui-sans-serif,
@@ -15,19 +15,26 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 
-  --color-page: #f6f7f2;
-  --color-surface: #ffffff;
-  --color-surface-muted: #e9ece1;
-  --color-text: #1d2520;
-  --color-text-muted: #53615a;
-  --color-border: #aab5ad;
-  --color-primary: #1f5f74;
-  --color-primary-hover: #174d5f;
-  --color-primary-text: #ffffff;
-  --color-accent-population: #006b58;
-  --color-accent-city: #6b4e00;
-  --color-accent-system: #7048a8;
-  --color-focus: #8f3f00;
+  /* A dark, sci-fi HUD palette rather than a light business-app one, per
+     the product's UI/UX principles. Verified against
+     tests/accessibility-palette.test.js: every text/background pair here
+     meets WCAG AA (>= 4.5:1), and the three accent colors stay
+     distinguishable under a deuteranopia simulation. */
+  --color-page: #0b0f1a;
+  --color-surface: #141b2e;
+  --color-surface-muted: #1c2540;
+  --color-text: #eef2fa;
+  --color-text-muted: #9aa5c4;
+  --color-border: #2a3455;
+  --color-primary: #22d3ee;
+  --color-primary-hover: #06b6d4;
+  --color-primary-text: #04141a;
+  --color-accent-population: #34d399;
+  --color-accent-city: #fbbf24;
+  --color-accent-system: #a78bfa;
+  --color-focus: #facc15;
+  --color-danger: #f87171;
+  --shadow-glow: 0 0 0 1px rgb(34 211 238 / 12%), 0 8px 24px rgb(0 0 0 / 40%);
 }
 
 * {
@@ -180,50 +187,6 @@ select:focus-visible {
 .save-status {
   margin: 0;
   color: var(--color-text);
-}
-
-.event-panel {
-  display: grid;
-  gap: 14px;
-  margin-bottom: 32px;
-  padding: 18px;
-  border: 1px solid var(--color-border);
-  border-left: 5px solid var(--color-focus);
-  border-radius: 8px;
-  background: var(--color-surface);
-}
-
-.event-panel-heading {
-  display: grid;
-  gap: 4px;
-}
-
-.event-panel-heading p,
-.event-panel-heading h2 {
-  margin: 0;
-}
-
-.event-panel-heading p {
-  color: var(--color-text-muted);
-  font-size: 0.8125rem;
-  font-weight: 800;
-}
-
-.event-panel-heading h2 {
-  font-size: 1.35rem;
-  line-height: 1.2;
-  letter-spacing: 0;
-}
-
-.event-panel-heading span {
-  color: var(--color-text-muted);
-  font-weight: 700;
-}
-
-.event-choice-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
 }
 
 .loading {
@@ -567,7 +530,7 @@ select:focus-visible {
 .city-row--selected {
   border-color: var(--color-primary);
   border-left-color: var(--color-primary);
-  background: #f7fbfc;
+  background: var(--color-surface-muted);
 }
 
 .city-row-select {
@@ -694,4 +657,325 @@ select:focus-visible {
   .city-detail-panel {
     position: static;
   }
+}
+
+/* Game shell: navigation, icon labels, and the four screens (galaxy,
+   dynasty, economy, events). Kept separate from the panel styles above so
+   this whole block can be found in one place when a screen is restyled. */
+
+.icon-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.control-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.app-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 28px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.nav-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 18px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  background: transparent;
+  font-weight: 800;
+  cursor: pointer;
+  position: relative;
+}
+
+.nav-tab:hover {
+  color: var(--color-text);
+  background: var(--color-surface-muted);
+}
+
+.nav-tab--active {
+  color: var(--color-primary-text);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.nav-tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  color: var(--color-primary-text);
+  background: var(--color-focus);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.empty-state {
+  margin: 0;
+  padding: 16px;
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text-muted);
+}
+
+.form-error {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-danger);
+  border-radius: 8px;
+  color: var(--color-danger);
+  background: rgb(248 113 113 / 10%);
+  font-weight: 700;
+}
+
+.resource-tags {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.resource-tag-badge {
+  display: inline-flex;
+  color: var(--color-accent-system);
+}
+
+/* Events screen */
+
+.events-view h2 {
+  margin: 0 0 20px;
+}
+
+.event-card-list {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.event-card {
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  border-left: 5px solid var(--color-focus);
+  border-radius: 8px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-glow);
+}
+
+.event-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.event-card-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.event-card-meta {
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.event-card-character {
+  margin: 4px 0 14px;
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.event-card-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.button--event-choice {
+  border-color: var(--color-border);
+  color: var(--color-text);
+  background: var(--color-surface-muted);
+}
+
+.button--event-choice:hover {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+}
+
+.button--secondary {
+  border-color: var(--color-border);
+  color: var(--color-text);
+  background: transparent;
+}
+
+.button--secondary:hover {
+  background: var(--color-surface-muted);
+}
+
+/* Economy screen */
+
+.economy-view h2 {
+  margin: 0 0 20px;
+}
+
+.economy-section {
+  margin-bottom: 28px;
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.economy-section h3 {
+  margin: 0 0 14px;
+  font-size: 1.125rem;
+}
+
+.found-business-form {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 20px;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+}
+
+.found-business-form h4 {
+  margin: 0;
+}
+
+.found-business-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.found-business-form input,
+.found-business-form select {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.found-business-form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.business-list,
+.trade-route-list,
+.career-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.business-row,
+.trade-route-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-left: 5px solid var(--color-accent-city);
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+}
+
+.business-row > div,
+.trade-route-row > div {
+  display: grid;
+  gap: 4px;
+}
+
+.business-name {
+  display: block;
+  font-weight: 800;
+}
+
+.business-archetype {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.business-row dl,
+.trade-route-row dl {
+  display: flex;
+  gap: 16px;
+  margin: 0;
+}
+
+.business-row dt,
+.trade-route-row dt {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.business-row dd,
+.trade-route-row dd {
+  margin: 0;
+  font-weight: 800;
+}
+
+.trade-route-endpoints {
+  font-weight: 800;
+}
+
+.career-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface-muted);
+  font-weight: 700;
+}
+
+/* Dynasty panel icon */
+
+.dynasty-member-identity-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dynasty-member-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--color-accent-population);
+}
+
+.dynasty-member-row--deceased .dynasty-member-icon {
+  color: var(--color-text-muted);
 }
