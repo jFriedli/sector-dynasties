@@ -1,4 +1,4 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { Briefcase, Building2, Coins, Route } from "lucide-react";
 import { copy } from "./content/copy";
 import { BUSINESS_ARCHETYPES, citiesEligibleForArchetype } from "./economyViewLogic";
@@ -18,6 +18,7 @@ interface EconomyViewProps {
   businesses: BusinessView[];
   tradeRoutes: TradeRouteView[];
   careers: CareerView[];
+  selectedBusinessId?: number | null;
   onFoundBusiness: (name: string, archetype: string, hostCityId: number) => Promise<void> | void;
 }
 
@@ -26,6 +27,7 @@ export function EconomyView({
   businesses,
   tradeRoutes,
   careers,
+  selectedBusinessId = null,
   onFoundBusiness,
 }: EconomyViewProps) {
   const [formOpen, setFormOpen] = useState(false);
@@ -36,6 +38,13 @@ export function EconomyView({
   const [submitting, setSubmitting] = useState(false);
 
   const eligibleCities = citiesEligibleForArchetype(sector, archetype);
+
+  useEffect(() => {
+    if (selectedBusinessId == null) return;
+    document
+      .getElementById(`business-${selectedBusinessId}`)
+      ?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
+  }, [selectedBusinessId]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -146,7 +155,16 @@ export function EconomyView({
         ) : (
           <ul className="business-list">
             {businesses.map((business) => (
-              <li className="business-row" key={business.id}>
+              <li
+                id={`business-${business.id}`}
+                className={[
+                  "business-row",
+                  business.id === selectedBusinessId ? "business-row--selected" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                key={business.id}
+              >
                 <div>
                   <span className="business-name">{business.name}</span>
                   <span className="business-archetype">{business.archetype}</span>
