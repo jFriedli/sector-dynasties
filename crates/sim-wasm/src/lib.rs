@@ -25,6 +25,13 @@ impl SimHandle {
         self.inner.step_days(days);
     }
 
+    #[wasm_bindgen(js_name = resolveEvent)]
+    pub fn resolve_event(&mut self, pending_id: u32, choice_key: &str) -> Result<(), JsError> {
+        self.inner
+            .resolve_event(pending_id, choice_key)
+            .map_err(|e| JsError::new(&format!("{e:?}")))
+    }
+
     #[wasm_bindgen(js_name = lobbyPolicy)]
     pub fn lobby_policy(
         &mut self,

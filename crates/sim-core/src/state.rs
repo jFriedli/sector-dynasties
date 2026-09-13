@@ -358,8 +358,42 @@ impl SimState {
             dynasty_name: self.dynasty.name.clone(),
             dynasty_wealth: self.dynasty.total_wealth(),
             dynasty_members: self.dynasty.member_summaries(),
+            pending_events: self.pending_event_summaries(),
             rng_domains: self.rng_domain_summaries(),
         }
+    }
+
+    fn pending_event_summaries(&self) -> Vec<PendingEventSummary> {
+        self.pending_events
+            .iter()
+            .filter_map(|pending| {
+                let definition = events::definition(&pending.key)?;
+                let character_name = self
+                    .dynasty
+                    .members
+                    .iter()
+                    .find(|character| character.id == pending.character_id)
+                    .map(|character| character.name.clone())
+                    .unwrap_or_else(|| "Unknown character".to_string());
+
+                Some(PendingEventSummary {
+                    id: pending.id,
+                    key: pending.key.clone(),
+                    title: definition.title.to_string(),
+                    character_id: pending.character_id,
+                    character_name,
+                    raised_year: pending.raised_year,
+                    choices: definition
+                        .choices
+                        .iter()
+                        .map(|choice| PendingEventChoiceSummary {
+                            key: choice.key.to_string(),
+                            label: choice.label.to_string(),
+                        })
+                        .collect(),
+                })
+            })
+            .collect()
     }
 
     /// Debug-only snapshot of every RNG stream currently persisted on
@@ -427,7 +461,25 @@ pub struct StateSummary {
     pub dynasty_name: String,
     pub dynasty_wealth: f64,
     pub dynasty_members: Vec<DynastyMemberSummary>,
+    pub pending_events: Vec<PendingEventSummary>,
     pub rng_domains: Vec<RngDomainSummary>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PendingEventSummary {
+    pub id: EntityId,
+    pub key: String,
+    pub title: String,
+    pub character_id: EntityId,
+    pub character_name: String,
+    pub raised_year: u64,
+    pub choices: Vec<PendingEventChoiceSummary>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct PendingEventChoiceSummary {
+    pub key: String,
+    pub label: String,
 }
 
 #[cfg(test)]
@@ -775,6 +827,56 @@ mod tests {
             crate::dynasty::DynastyRole::Head
         );
         assert!(summary.dynasty_members[0].alive);
+    }
+
+    #[test]
+    fn summary_exposes_pending_event_titles_and_choices() {
+        let mut state = SimState::new(2026);
+        crate::events::scan_for_eligible_events(&mut state);
+
+        let summary = state.summary();
+        let event = summary
+            .pending_events
+            .iter()
+            .find(|event| event.key == "family_seed_money")
+            .expect("founder should have the seed money event pending");
+
+        assert_eq!(event.title, "A relative offers seed money");
+        assert_eq!(event.character_name, "Founder");
+        assert_eq!(
+            event
+                .choices
+                .iter()
+                .map(|choice| (choice.key.as_str(), choice.label.as_str()))
+                .collect::<Vec<_>>(),
+            vec![
+                ("accept", "Accept the money"),
+                ("decline", "Politely decline")
+            ]
+        );
+    }
+
+    #[test]
+    fn resolving_an_event_removes_it_from_the_summary_and_updates_wealth() {
+        let mut state = SimState::new(2026);
+        crate::events::scan_for_eligible_events(&mut state);
+        let pending_id = state
+            .summary()
+            .pending_events
+            .iter()
+            .find(|event| event.key == "family_seed_money")
+            .unwrap()
+            .id;
+        let wealth_before = state.summary().dynasty_wealth;
+
+        state.resolve_event(pending_id, "accept").unwrap();
+        let summary = state.summary();
+
+        assert!(summary
+            .pending_events
+            .iter()
+            .all(|event| event.id != pending_id));
+        assert!(summary.dynasty_wealth > wealth_before);
     }
 
     #[test]

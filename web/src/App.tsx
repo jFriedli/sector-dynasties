@@ -4,6 +4,7 @@ import { copy } from "./content/copy";
 import { CityDetailPanel } from "./CityDetailPanel";
 import { DebugOverlay, useDebugOverlayVisible } from "./DebugOverlay";
 import { DynastyPanel } from "./DynastyPanel";
+import { EventPanel } from "./EventPanel";
 import { GlobalSearch } from "./GlobalSearch";
 import { createIndexedDbSaveSlotStore } from "./indexedDbSaveSlotStore";
 import { SaveControls, type SaveLoadStatus } from "./SaveControls";
@@ -33,6 +34,11 @@ export function App() {
   const [hasSavedSlot, setHasSavedSlot] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveLoadStatus>({ kind: "idle" });
 
+  const refreshFromHandle = useCallback((nextHandle: SimHandle) => {
+    setSummary(JSON.parse(nextHandle.summary_json()) as StateSummary);
+    setSnapshot(JSON.parse(nextHandle.to_json()) as SimStateSnapshot);
+  }, []);
+
   // Swap in the filesystem-backed store when running inside the Tauri
   // desktop shell (issue #102's Linux packaging spike). The browser
   // target never runs this branch, so it keeps using IndexedDB exactly as
@@ -56,9 +62,8 @@ export function App() {
       if (cancelled) return;
       const h = new SimHandle(BigInt(42));
       setHandle(h);
-      setSummary(JSON.parse(h.summary_json()) as StateSummary);
+      refreshFromHandle(h);
       const nextSnapshot = JSON.parse(h.to_json()) as SimStateSnapshot;
-      setSnapshot(nextSnapshot);
       setSelectedCityId(
         nextSnapshot.sector.systems[0]?.planets[0]?.countries[0]?.cities[0]?.id ?? null,
       );
@@ -66,7 +71,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [refreshFromHandle]);
 
   useEffect(() => {
     let cancelled = false;
@@ -83,9 +88,8 @@ export function App() {
     const startedAt = performance.now();
     handle.step_days(DAYS_PER_YEAR);
     setLastStep({ days: DAYS_PER_YEAR, durationMs: performance.now() - startedAt });
-    setSummary(JSON.parse(handle.summary_json()) as StateSummary);
-    setSnapshot(JSON.parse(handle.to_json()) as SimStateSnapshot);
-  }, [handle]);
+    refreshFromHandle(handle);
+  }, [handle, refreshFromHandle]);
 
   // A synchronous call is intentional here: the bootstrap slice's data
   // sizes make even a 10-year advance (3600 simulated days) fast enough
@@ -97,9 +101,17 @@ export function App() {
     const startedAt = performance.now();
     handle.step_days(days);
     setLastStep({ days, durationMs: performance.now() - startedAt });
-    setSummary(JSON.parse(handle.summary_json()) as StateSummary);
-    setSnapshot(JSON.parse(handle.to_json()) as SimStateSnapshot);
-  }, [handle, yearsToAdvance]);
+    refreshFromHandle(handle);
+  }, [handle, refreshFromHandle, yearsToAdvance]);
+
+  const onResolveEvent = useCallback(
+    (eventId: number, choiceKey: string) => {
+      if (!handle) return;
+      handle.resolveEvent(eventId, choiceKey);
+      refreshFromHandle(handle);
+    },
+    [handle, refreshFromHandle],
+  );
 
   const onSave = useCallback(() => {
     if (!handle) return;
@@ -126,9 +138,8 @@ export function App() {
         const nextHandle = SimHandle.fromJson(slot.stateJson);
         handle?.free();
         setHandle(nextHandle);
-        setSummary(JSON.parse(nextHandle.summary_json()) as StateSummary);
+        refreshFromHandle(nextHandle);
         const nextSnapshot = JSON.parse(nextHandle.to_json()) as SimStateSnapshot;
-        setSnapshot(nextSnapshot);
         setSelectedCityId(
           nextSnapshot.sector.systems[0]?.planets[0]?.countries[0]?.cities[0]?.id ?? null,
         );
@@ -137,7 +148,7 @@ export function App() {
       .catch((error: unknown) => {
         setSaveStatus({ kind: "error", message: String(error) });
       });
-  }, [handle, saveStore]);
+  }, [handle, refreshFromHandle, saveStore]);
 
   if (!summary || !snapshot) {
     return <p className="loading">{copy.loading}</p>;
@@ -180,6 +191,7 @@ export function App() {
         onAdvanceOneYear={advanceOneYear}
         onAdvanceYears={advanceYears}
       />
+      <EventPanel event={summary.pending_events[0] ?? null} onResolve={onResolveEvent} />
       <SaveControls
         hasSavedSlot={hasSavedSlot}
         status={saveStatus}
