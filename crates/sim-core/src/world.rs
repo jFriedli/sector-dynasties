@@ -6,6 +6,7 @@
 //! See docs/ARCHITECTURE.md for the intended growth path.
 
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 pub type EntityId = u32;
 
@@ -42,6 +43,25 @@ impl Sector {
             .flat_map(|s| &s.planets)
             .flat_map(|p| &p.countries)
             .find(|country| country.cities.iter().any(|city| city.id == city_id))
+    }
+
+    /// Look up a country anywhere in the hierarchy by id.
+    pub fn find_country(&self, id: EntityId) -> Option<&Country> {
+        self.systems
+            .iter()
+            .flat_map(|s| &s.planets)
+            .flat_map(|p| &p.countries)
+            .find(|country| country.id == id)
+    }
+
+    /// Mutable counterpart to [`Sector::find_country`], used by
+    /// player-triggered actions that affect a named country.
+    pub fn find_country_mut(&mut self, id: EntityId) -> Option<&mut Country> {
+        self.systems
+            .iter_mut()
+            .flat_map(|s| &mut s.planets)
+            .flat_map(|p| &mut p.countries)
+            .find(|country| country.id == id)
     }
 }
 
@@ -174,6 +194,55 @@ fn default_judicial_independence() -> f64 {
     0.5
 }
 
+/// One independently modeled government component. Kept as data rather
+/// than display labels so political mechanics can target a precise axis.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum GovernmentComponent {
+    Federalism,
+    Franchise,
+    EconomicLiberalism,
+    PressFreedom,
+}
+
+impl FromStr for GovernmentComponent {
+    type Err = ParseGovernmentComponentError;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "federalism" => Ok(Self::Federalism),
+            "franchise" => Ok(Self::Franchise),
+            "economic_liberalism" | "economicLiberalism" => Ok(Self::EconomicLiberalism),
+            "press_freedom" | "pressFreedom" => Ok(Self::PressFreedom),
+            _ => Err(ParseGovernmentComponentError),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ParseGovernmentComponentError;
+
+/// Direction a lobbying action tries to move a policy component.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum PolicyDirection {
+    Decrease,
+    Increase,
+}
+
+impl FromStr for PolicyDirection {
+    type Err = ParsePolicyDirectionError;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "decrease" | "down" => Ok(Self::Decrease),
+            "increase" | "up" => Ok(Self::Increase),
+            _ => Err(ParsePolicyDirectionError),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ParsePolicyDirectionError;
+
 impl GovernmentProfile {
     /// A short human-readable label derived from the component values.
     /// This is a placeholder classifier for the bootstrap slice, not a
@@ -221,6 +290,47 @@ impl GovernmentProfile {
         ]
         .iter()
         .all(|v| v.is_finite() && (0.0..=1.0).contains(v))
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.federalism.is_finite()
+            && (0.0..=1.0).contains(&self.federalism)
+            && self.franchise.is_finite()
+            && (0.0..=1.0).contains(&self.franchise)
+            && self.economic_liberalism.is_finite()
+            && (0.0..=1.0).contains(&self.economic_liberalism)
+            && self.press_freedom.is_finite()
+            && (0.0..=1.0).contains(&self.press_freedom)
+    }
+
+    pub fn component_value(&self, component: GovernmentComponent) -> f64 {
+        match component {
+            GovernmentComponent::Federalism => self.federalism,
+            GovernmentComponent::Franchise => self.franchise,
+            GovernmentComponent::EconomicLiberalism => self.economic_liberalism,
+            GovernmentComponent::PressFreedom => self.press_freedom,
+        }
+    }
+
+    pub fn shift_component(
+        &mut self,
+        component: GovernmentComponent,
+        direction: PolicyDirection,
+        amount: f64,
+    ) -> (f64, f64) {
+        let before = self.component_value(component);
+        let signed_amount = match direction {
+            PolicyDirection::Decrease => -amount,
+            PolicyDirection::Increase => amount,
+        };
+        let after = (before + signed_amount).clamp(0.0, 1.0);
+        match component {
+            GovernmentComponent::Federalism => self.federalism = after,
+            GovernmentComponent::Franchise => self.franchise = after,
+            GovernmentComponent::EconomicLiberalism => self.economic_liberalism = after,
+            GovernmentComponent::PressFreedom => self.press_freedom = after,
+        }
+        (before, after)
     }
 }
 

@@ -200,6 +200,26 @@ mod tests {
     }
 
     #[test]
+    fn an_out_of_range_government_component_is_caught() {
+        let mut state = SimState::new(2);
+        state.sector.systems[0].planets[0].countries[0]
+            .government
+            .franchise = 1.5;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_non_finite_government_component_is_caught() {
+        let mut state = SimState::new(2);
+        state.sector.systems[0].planets[0].countries[0]
+            .government
+            .press_freedom = f64::NAN;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
     fn a_character_born_this_year_is_checked_the_same_as_any_other_member() {
         // Find a seed/year where the founder head actually has a child, so
         // this exercises a real birth rather than an empty no-op.
