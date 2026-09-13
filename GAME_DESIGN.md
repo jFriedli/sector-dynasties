@@ -30,10 +30,11 @@ stop being one, if that's technically useful.
 ## Government as components, not an enum
 
 A country's government is described by independent institutional dimensions
-(`GovernmentProfile`: federalism, franchise, economic liberalism, press freedom
-today; more can be added) rather than one fixed type. The displayed government name
-is derived from the components. This is what lets governments drift, reform, and
-diverge gradually instead of jumping between fixed states.
+(`GovernmentProfile`: federalism, franchise, economic liberalism, press freedom,
+legislative strength, judicial independence today; more can be added) rather than
+one fixed type. The displayed government name is derived from the components. This
+is what lets governments drift, reform, and diverge gradually instead of jumping
+between fixed states.
 
 ## Culture as dimensions
 

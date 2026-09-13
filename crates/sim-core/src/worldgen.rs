@@ -172,6 +172,8 @@ fn generate_country(rng: &mut SimRng, next_id: &mut u32, planet_tags: &[Resource
         franchise: rng.next_f64(),
         economic_liberalism: rng.next_f64(),
         press_freedom: rng.next_f64(),
+        legislative_strength: rng.next_f64(),
+        judicial_independence: rng.next_f64(),
     };
     let social_mobility = rng.next_f64();
     let union_power = rng.next_f64();
@@ -306,6 +308,39 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn generated_government_profiles_are_valid() {
+        let sector = generate_sector(55, 3);
+        for system in &sector.systems {
+            for planet in &system.planets {
+                for country in &planet.countries {
+                    assert!(
+                        country.government.is_valid(),
+                        "country {} has an invalid government profile: {:?}",
+                        country.name,
+                        country.government
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn same_seed_produces_the_same_government_profile() {
+        let a = generate_sector(4242, 3);
+        let b = generate_sector(4242, 3);
+        let profiles = |sector: &Sector| -> Vec<String> {
+            sector
+                .systems
+                .iter()
+                .flat_map(|s| s.planets.iter())
+                .flat_map(|p| p.countries.iter())
+                .map(|c| serde_json::to_string(&c.government).unwrap())
+                .collect()
+        };
+        assert_eq!(profiles(&a), profiles(&b));
     }
 
     #[test]

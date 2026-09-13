@@ -199,6 +199,8 @@ mod tests {
                             franchise: 0.5,
                             economic_liberalism: 0.5,
                             press_freedom: 0.5,
+                            legislative_strength: 0.5,
+                            judicial_independence: 0.5,
                         },
                         backstory: "Test backstory.".to_string(),
                         social_mobility: 0.5,

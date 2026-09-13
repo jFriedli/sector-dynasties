@@ -270,6 +270,26 @@ mod tests {
     }
 
     #[test]
+    fn an_out_of_range_legislative_strength_is_caught() {
+        let mut state = SimState::new(3);
+        state.sector.systems[0].planets[0].countries[0]
+            .government
+            .legislative_strength = 1.5;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_non_finite_judicial_independence_is_caught() {
+        let mut state = SimState::new(4);
+        state.sector.systems[0].planets[0].countries[0]
+            .government
+            .judicial_independence = f64::NAN;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
     fn an_out_of_range_social_mobility_is_caught() {
         let mut state = SimState::new(3);
         state.sector.systems[0].planets[0].countries[0].social_mobility = 1.5;
