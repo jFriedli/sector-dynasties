@@ -1,7 +1,7 @@
 [package]
 name = "sector-dynasties-tauri"
 version = "0.1.0"
-description = "Linux desktop packaging spike for Sector Dynasties (issue #102)"
+description = "Desktop packaging spike for Sector Dynasties (Linux: issue #102, Windows: issue #103)"
 edition = "2021"
 license = "MIT"
 publish = false
@@ -13,6 +13,14 @@ publish = false
 # `cargo test --workspace` (and CI's `rust`/`windows` jobs) never need the
 # GTK/WebKit system libraries this crate requires; only building this
 # crate directly does.
+#
+# One crate, two spikes: #102 built the shell and its filesystem save
+# commands against Linux; #103 layers Windows-target packaging on top
+# (NSIS bundling via web/src-tauri/tauri.windows.conf.json, a Windows CI
+# build job) without forking a second crate. No Windows-specific Rust code
+# was needed here: `tauri` itself handles the WebView2 vs. WebKitGTK split
+# internally, and the filesystem commands in `src/main.rs` already go
+# through tauri's cross-platform path API.
 [workspace]
 
 [[bin]]

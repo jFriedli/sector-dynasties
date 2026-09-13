@@ -4,5 +4,10 @@ fails to compile without files at these exact paths, so a placeholder was
 required to get the spike building at all; see docs/ASSETS.md for the
 placeholder-asset policy this follows.
 
+`icon.ico` (added by issue #103, the Windows packaging spike, which needs
+it for NSIS bundling) is generated from this same `icon.png`
+(`convert icon.png -define icon:auto-resize=256,128,64,48,32,16 icon.ico`),
+not a separate placeholder.
+
 Tracked in https://github.com/jFriedli/sector-dynasties/issues/156 to
 replace with a real app icon.

@@ -1,7 +1,11 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-//! Thin native host for the Sector Dynasties web app (issue #102's Linux
-//! packaging spike; see `docs/ARCHITECTURE.md`'s desktop section).
+//! Thin native host for the Sector Dynasties web app: issue #102's Linux
+//! packaging spike, with issue #103 layering Windows-target packaging on
+//! top (see `docs/ARCHITECTURE.md`'s desktop section, and
+//! `tauri.windows.conf.json` alongside this crate's `tauri.conf.json`).
+//! No Windows-specific Rust code was needed: everything below is already
+//! cross-platform through `tauri`'s own APIs.
 //!
 //! No simulation logic lives here on purpose. `sim-core`'s save/load path
 //! (`SimState::to_json`/`from_json`, going through `save::load_and_migrate`,
@@ -12,6 +16,13 @@
 //! written are the same `SimHandle.to_json()` output either way, and
 //! loading them back still goes through `SimHandle.fromJson()` in the
 //! frontend (see `web/src/tauriFsSaveSlotStore.ts`).
+//!
+//! What issue #103 actually verified on Windows: `.github/workflows/ci.yml`'s
+//! `windows-tauri` job builds this crate and produces an NSIS bundle on a
+//! real `windows-latest` GitHub Actions runner. What it did NOT verify: that
+//! the installer, the native window, or the WebView2-backed webview actually
+//! work when run by a human on real Windows hardware — no CI runner clicks
+//! the installer or the app. See issue #152 for that follow-up.
 
 use std::fs;
 use std::path::PathBuf;
