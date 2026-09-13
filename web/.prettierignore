@@ -1,4 +1,7 @@
 dist
 src/wasm
+
+# Tauri Linux packaging spike (issue #102): its own Cargo build output and
+# generated schemas, not app source.
 src-tauri/target
 src-tauri/gen

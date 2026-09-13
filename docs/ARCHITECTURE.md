@@ -54,11 +54,15 @@ If you find yourself writing a game rule (a formula, a threshold, a decision) in
   frugal, sickly, ...) attached to `Character`, generated deterministically
   per character. Growing the list is ongoing content work, not an
   architectural change.
-- `career.rs` — `promotion_chance`, the minimal consumer proving `Trait`
-  actually affects a system rather than sitting decorative. Not a real
-  career/job system: that is issue #26's larger, separate scope (job
-  ladder, salary, promotion timing), which should absorb or replace this
-  once it lands (tracked in #125).
+- `career.rs` — `Career`, a character's job on a `CareerTrack` (only
+  `Corporate` exists today: Analyst -> Manager -> Director). Weekly
+  settlement pays salary, scaled by the employer city's specialization and
+  treasury, into the holder's wealth, and rolls a deterministic per-week
+  promotion chance (`promotion_chance`, trait-modified, folded in from the
+  #38 placeholder per #125) once the holder has cleared a minimum tenure at
+  their current rung. A second track (Political, Academic, ...) should add
+  a `CareerTrack` variant and its own match arms, the same pattern
+  `business.rs` uses for business archetypes, rather than a shared formula.
 - `economy.rs` — weekly settlement over cities. Intentionally minimal (no goods,
   production chains, or trade routes yet); it exists to prove the tick/frequency
   architecture. Real production chains are `economy`/`trade` backlog work.

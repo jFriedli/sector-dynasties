@@ -106,6 +106,32 @@ pub fn check_invariants(state: &SimState) -> Vec<InvariantViolation> {
         }
     }
 
+    for career in &state.careers {
+        if !career.is_valid() {
+            violations.push(InvariantViolation(format!(
+                "career (id {}) has an invalid level: {}",
+                career.id, career.level
+            )));
+        }
+        if !state
+            .dynasty
+            .members
+            .iter()
+            .any(|c| c.id == career.character_id)
+        {
+            violations.push(InvariantViolation(format!(
+                "career (id {}) character_id {} does not reference an existing dynasty member",
+                career.id, career.character_id
+            )));
+        }
+        if state.sector.find_city(career.employer_city_id).is_none() {
+            violations.push(InvariantViolation(format!(
+                "career (id {}) employer_city_id {} does not reference an existing city",
+                career.id, career.employer_city_id
+            )));
+        }
+    }
+
     for favor in &state.favors {
         if !favor.is_valid() {
             violations.push(InvariantViolation(format!(
@@ -336,6 +362,56 @@ mod tests {
                 crate::business::BusinessArchetype::Mining,
                 host_city_id,
             )
+            .unwrap();
+        assert_eq!(check_invariants(&state), Vec::new());
+    }
+
+    #[test]
+    fn a_career_with_an_out_of_range_level_is_caught() {
+        let mut state = SimState::new(9);
+        let home_city = state.dynasty.head().unwrap().home_city.unwrap();
+        let head_id = state.dynasty.head_character_id;
+        state
+            .start_career(crate::career::CareerTrack::Corporate, head_id, home_city)
+            .unwrap();
+        state.careers[0].level = 200;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_career_held_by_an_unknown_character_is_caught() {
+        let mut state = SimState::new(10);
+        let home_city = state.dynasty.head().unwrap().home_city.unwrap();
+        let head_id = state.dynasty.head_character_id;
+        state
+            .start_career(crate::career::CareerTrack::Corporate, head_id, home_city)
+            .unwrap();
+        state.careers[0].character_id = 999_999;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_career_based_in_an_unknown_city_is_caught() {
+        let mut state = SimState::new(11);
+        let home_city = state.dynasty.head().unwrap().home_city.unwrap();
+        let head_id = state.dynasty.head_character_id;
+        state
+            .start_career(crate::career::CareerTrack::Corporate, head_id, home_city)
+            .unwrap();
+        state.careers[0].employer_city_id = 999_999;
+        let violations = check_invariants(&state);
+        assert!(!violations.is_empty());
+    }
+
+    #[test]
+    fn a_freshly_started_career_has_no_violations() {
+        let mut state = SimState::new(12);
+        let home_city = state.dynasty.head().unwrap().home_city.unwrap();
+        let head_id = state.dynasty.head_character_id;
+        state
+            .start_career(crate::career::CareerTrack::Corporate, head_id, home_city)
             .unwrap();
         assert_eq!(check_invariants(&state), Vec::new());
     }

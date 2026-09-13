@@ -1,0 +1,8 @@
+These icons are a procedurally-generated placeholder (a flat #2e3459
+square at each required size), not real branding. `tauri::generate_context!()`
+fails to compile without files at these exact paths, so a placeholder was
+required to get the spike building at all; see docs/ASSETS.md for the
+placeholder-asset policy this follows.
+
+Tracked in https://github.com/jFriedli/sector-dynasties/issues/156 to
+replace with a real app icon.

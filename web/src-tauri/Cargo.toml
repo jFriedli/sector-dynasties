@@ -1,29 +1,26 @@
-[workspace]
-# Deliberately its own standalone Cargo project: NOT added to the root
-# workspace's `members` (crates/sim-core, crates/sim-cli, crates/sim-wasm),
-# so this PR does not need to touch the high-collision root Cargo.toml.
-
 [package]
 name = "sector-dynasties-tauri"
 version = "0.1.0"
-description = "Windows desktop packaging spike for Sector Dynasties (issue #103)"
+description = "Linux desktop packaging spike for Sector Dynasties (issue #102)"
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/jFriedli/sector-dynasties"
 publish = false
 
-# Deliberately its own Cargo project, not a member of the root workspace
-# (crates/sim-core, crates/sim-cli, crates/sim-wasm): this crate only wraps
-# the already-built web/dist static output in a native window and must
-# never become a place simulation rules leak into. See docs/ARCHITECTURE.md
-# and the PR for issue #103.
+# Deliberately its own workspace: this crate wraps the existing `web/`
+# build in a native window and is not part of the `sim-core` Cargo
+# workspace at the repo root (see docs/ARCHITECTURE.md). Keeping it
+# standalone means the root workspace's `cargo build --workspace` /
+# `cargo test --workspace` (and CI's `rust`/`windows` jobs) never need the
+# GTK/WebKit system libraries this crate requires; only building this
+# crate directly does.
+[workspace]
+
+[[bin]]
+name = "sector-dynasties-tauri"
+path = "src/main.rs"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
-
-[[bin]]
-name = "sector-dynasties-tauri"
-path = "src/main.rs"
