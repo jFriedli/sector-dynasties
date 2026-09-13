@@ -182,6 +182,50 @@ select:focus-visible {
   color: var(--color-text);
 }
 
+.event-panel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 32px;
+  padding: 18px;
+  border: 1px solid var(--color-border);
+  border-left: 5px solid var(--color-focus);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.event-panel-heading {
+  display: grid;
+  gap: 4px;
+}
+
+.event-panel-heading p,
+.event-panel-heading h2 {
+  margin: 0;
+}
+
+.event-panel-heading p {
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+  font-weight: 800;
+}
+
+.event-panel-heading h2 {
+  font-size: 1.35rem;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.event-panel-heading span {
+  color: var(--color-text-muted);
+  font-weight: 700;
+}
+
+.event-choice-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .loading {
   width: min(520px, calc(100% - 32px));
   margin: 40vh auto 0;

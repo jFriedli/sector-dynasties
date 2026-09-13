@@ -44,6 +44,8 @@ export const copy = {
   saveStatusSaved: (savedAt: string) => `Saved at ${savedAt}.`,
   saveStatusLoaded: (savedAt: string) => `Loaded save from ${savedAt}.`,
   saveStatusError: (message: string) => `Save failed. ${message}`,
+  eventPanelLabel: "Pending event",
+  eventForCharacter: (characterName: string, year: number) => `${characterName}, year ${year}`,
   globalSearchLabel: "Search",
   globalSearchPlaceholder: "Search characters and cities",
   globalSearchResultsLabel: "Search results",

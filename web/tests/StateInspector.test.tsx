@@ -21,6 +21,7 @@ const SUMMARY: StateSummary = {
   dynasty_name: "House Meridian",
   dynasty_wealth: 500,
   dynasty_members: [{ id: 1, name: "Founder Meridian", age_years: 34, alive: true, role: "Head" }],
+  pending_events: [],
   rng_domains: [{ domain: "economy", fingerprint: "deadbeefcafef00d" }],
 };
 

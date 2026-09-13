@@ -19,6 +19,21 @@ export interface DynastyMemberSummary {
   role: DynastyRole;
 }
 
+export interface PendingEventChoiceSummary {
+  key: string;
+  label: string;
+}
+
+export interface PendingEventSummary {
+  id: number;
+  key: string;
+  title: string;
+  character_id: number;
+  character_name: string;
+  raised_year: number;
+  choices: PendingEventChoiceSummary[];
+}
+
 // Mirrors sim_core::state::StateSummary. Kept as a hand-written type
 // rather than a generated one for the bootstrap slice; see the backlog
 // item under `tooling` for generating this from the Rust definition so the
@@ -33,6 +48,7 @@ export interface StateSummary {
   dynasty_name: string;
   dynasty_wealth: number;
   dynasty_members: DynastyMemberSummary[];
+  pending_events: PendingEventSummary[];
   rng_domains: RngDomainSummary[];
 }
 
