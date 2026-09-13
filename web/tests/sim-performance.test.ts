@@ -43,6 +43,14 @@ const snapshot: SimStateSnapshot = {
                 backstory: "Compact grew around an early shipyard.",
                 social_mobility: 0.5,
                 union_power: 0.5,
+                government: {
+                  federalism: 0.5,
+                  franchise: 0.5,
+                  economic_liberalism: 0.5,
+                  press_freedom: 0.5,
+                  legislative_strength: 0.5,
+                  judicial_independence: 0.5,
+                },
                 cities: [
                   {
                     id: 4,
@@ -81,6 +89,14 @@ const snapshot: SimStateSnapshot = {
                 backstory: "League grew around a transit compact.",
                 social_mobility: 0.7,
                 union_power: 0.3,
+                government: {
+                  federalism: 0.5,
+                  franchise: 0.5,
+                  economic_liberalism: 0.5,
+                  press_freedom: 0.5,
+                  legislative_strength: 0.5,
+                  judicial_independence: 0.5,
+                },
                 cities: [
                   {
                     id: 9,

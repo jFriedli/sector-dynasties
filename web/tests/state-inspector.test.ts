@@ -51,6 +51,14 @@ const SNAPSHOT: SimStateSnapshot = {
                 backstory: "North Compact grew around orbital freight contracts.",
                 social_mobility: 0.45,
                 union_power: 0.4,
+                government: {
+                  federalism: 0.5,
+                  franchise: 0.5,
+                  economic_liberalism: 0.5,
+                  press_freedom: 0.5,
+                  legislative_strength: 0.5,
+                  judicial_independence: 0.5,
+                },
                 cities: [
                   {
                     id: 4,
@@ -81,6 +89,14 @@ const SNAPSHOT: SimStateSnapshot = {
                 backstory: "Dock League formed from several unified settlements.",
                 social_mobility: 0.6,
                 union_power: 0.3,
+                government: {
+                  federalism: 0.5,
+                  franchise: 0.5,
+                  economic_liberalism: 0.5,
+                  press_freedom: 0.5,
+                  legislative_strength: 0.5,
+                  judicial_independence: 0.5,
+                },
                 cities: [
                   {
                     id: 8,

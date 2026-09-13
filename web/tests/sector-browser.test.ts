@@ -22,6 +22,14 @@ const sector: Sector = {
                 "North Compact was founded by colonists seeking independence from the old planetary charters.",
               social_mobility: 0.5,
               union_power: 0.5,
+              government: {
+                federalism: 0.5,
+                franchise: 0.5,
+                economic_liberalism: 0.5,
+                press_freedom: 0.5,
+                legislative_strength: 0.5,
+                judicial_independence: 0.5,
+              },
               cities: [
                 {
                   id: 4,
@@ -57,6 +65,14 @@ const sector: Sector = {
                 "Dock League was formed when several rival settlements agreed to a single unified charter.",
               social_mobility: 0.6,
               union_power: 0.3,
+              government: {
+                federalism: 0.5,
+                franchise: 0.5,
+                economic_liberalism: 0.5,
+                press_freedom: 0.5,
+                legislative_strength: 0.5,
+                judicial_independence: 0.5,
+              },
               cities: [
                 {
                   id: 8,
@@ -115,6 +131,7 @@ describe("sector browser data shaping", () => {
       name: "Port Ember",
       systemName: "Boreal",
       planetName: "Boreal Station",
+      countryId: 7,
       countryName: "Dock League",
       specialization: "Logistics",
       population: {
@@ -123,6 +140,14 @@ describe("sector browser data shaping", () => {
         unemployment_rate: 0.08,
       },
       treasury: 420.5,
+      government: {
+        federalism: 0.5,
+        franchise: 0.5,
+        economic_liberalism: 0.5,
+        press_freedom: 0.5,
+        legislative_strength: 0.5,
+        judicial_independence: 0.5,
+      },
     });
   });
 });
